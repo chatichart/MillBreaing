@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "revision": 0,
+  "project": {
+    "id": "MILL-BEARING",
+    "name": "Mill Bearing Supplier Tracking"
+  },
+  "suppliers": [
+    {
+      "id": "SUP-001",
+      "name": "สยาม สิริพลัส"
+    },
+    {
+      "id": "SUP-002",
+      "name": "เอส.เจ เมทัลเวิร์ค"
+    }
+  ],
+  "items": [],
+  "pairings": [],
+  "deliveryRecords": [],
+  "followUps": [],
+  "meetingActions": [],
+  "documentMetadata": [],
+  "auditEvents": [],
+  "settings": {
+    "requireDocumentsForReady": false,
+    "requireDocumentsForDelivery": false
+  }
+}

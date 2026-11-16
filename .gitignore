@@ -23,6 +23,12 @@ solution
 temp
 *.sppkg
 .heft
+dist-web
+dist-server
+var
+.test-db*
+!\.env.example
+reference/
 
 # Coverage directory used by tools like istanbul
 coverage

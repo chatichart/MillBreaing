@@ -2,6 +2,6 @@
 
 Official source repository for the Realsoluplus Purchasing Supplier Tracking web application.
 
-The `main` branch is initialized first as requested. The existing application is being migrated to Node.js + PostgreSQL, deployed with Nixpacks on Dokploy/Hostinger. Entra ID sign-in and approval-based Viewer/Editor access are required.
+The `main` branch was initialized first as requested. The application now includes Node.js + PostgreSQL deployment through Nixpacks on Dokploy/Hostinger, plus Entra ID sign-in and approval-based Viewer/Editor access.
 
-Application source and deployment instructions will follow after validation. This initial repository setup is not a deployable production release. No production Actual data or credentials are included.
+The active public trial explicitly uses isolated editable demo data without Entra. See README.md and docs/DOKPLOY.md for configuration and remaining live Entra acceptance requirements. No production Actual data or credentials are included.

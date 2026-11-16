@@ -1,0 +1,39 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "mill-bearing-client-side-solution",
+    "id": "185b74bc-feb4-4854-8a22-93545c10b6be",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": false,
+    "developer": {
+      "name": "Realsoluplus Co., Ltd.",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.24.1"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "Realsoluplus Purchasing Supplier Tracking"
+      },
+      "longDescription": {
+        "default": "Mill Bearing supplier progress, original plans, confirmed delivery S-Curve and weekly Purchasing coordination."
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "mill-bearing Feature",
+        "description": "The feature that activates elements of the mill-bearing solution.",
+        "id": "c26126fb-059f-4bd6-8bff-eda1cbce5beb",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/mill-bearing.sppkg"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "siteUrl": "https://YOUR-TENANT.sharepoint.com/sites/YOUR-SITE",
+  "libraryPath": "/sites/YOUR-SITE/Shared Documents",
+  "dataFolder": "Purchasing-Supplier-Tracking/data",
+  "documentFolder": "Purchasing-Supplier-Tracking/documents",
+  "writerEnabled": false
+}

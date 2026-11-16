@@ -1,0 +1,22 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "whichFolder": "subdir",
+    "solutionName": "mill-bearing",
+    "environment": "spo",
+    "useGulp": false,
+    "componentType": "webpart",
+    "template": "react",
+    "componentName": "MillBearing",
+    "componentDescription": "Realsoluplus Purchasing Supplier Tracking",
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "24.16.0",
+    "sdksVersions": {},
+    "version": "1.24.1",
+    "libraryName": "mill-bearing",
+    "libraryId": "185b74bc-feb4-4854-8a22-93545c10b6be",
+    "packageManager": "npm",
+    "solutionShortDescription": "mill-bearing description",
+    "skipFeatureDeployment": true
+  }
+}

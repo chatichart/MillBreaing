@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "mill-bearing-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/millBearing/MillBearingWebPart.js",
+          "manifest": "./src/webparts/millBearing/MillBearingWebPart.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "MillBearingWebPartStrings": "lib/webparts/millBearing/loc/{locale}.js"
+  }
+}
