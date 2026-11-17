@@ -14,7 +14,7 @@ import {
 } from "../../domain/rules";
 import { reportCsv, download } from "../../services/export";
 export default function PlanningCoordination(p: PageProps): React.ReactElement {
-  const [month, setMonth] = React.useState(p.asOf.slice(0, 7));
+  const [month, setMonth] = React.useState("");
   const [week, setWeek] = React.useState(0);
   const [view, setView] = React.useState("weekly");
   const [editing, setEditing] = React.useState<MeetingAction | null>(null);
@@ -26,8 +26,31 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
     p.onDirty(!!editing);
     return () => p.onDirty(false);
   }, [!!editing, p.onDirty]);
-  const boardDate = (i: Item): string | null => forecast(i);
-  const scope = p.items.filter((i) => boardDate(i)?.startsWith(month));
+  // Delivered items belong to their actual delivery month/week, even when
+  // their plan is in another month (or has no delivery date).
+  const boardDate = (i: Item): string | null =>
+    i.actual.deliveryDate || forecast(i);
+  const months: string[] = [];
+  const startMonth = p.asOf.slice(0, 7);
+  const endMonth = `${Math.max(2027, Number(p.asOf.slice(0, 4)))}-12`;
+  if (month) months.push(month);
+  else {
+    let cursor = startMonth;
+    while (cursor <= endMonth) {
+      months.push(cursor);
+      const [year, m] = cursor.split("-").map(Number);
+      cursor = `${m === 12 ? year + 1 : year}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}`;
+    }
+  }
+  const inRange = (date: string | null): boolean =>
+    !!date && months.includes(date.slice(0, 7));
+  const plannedThisMonth = p.items.filter((i) => inRange(forecast(i))).length;
+  const scope = p.items.filter((i) => inRange(boardDate(i)));
+  const monthLabel = (value: string): string =>
+    new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric", timeZone: "UTC" })
+      .format(new Date(`${value}-01T00:00:00Z`));
+  const actualLabel = (date: string): string =>
+    `${date.slice(8, 10)}/${date.slice(5, 7)}/${String(Number(date.slice(0, 4)) + 543).slice(-2)}`;
   const visible = scope.filter((i) => !week || weekOf(boardDate(i)!) === week);
   const m = metrics(p.data, scope, p.asOf);
   const issues = (i: Item): string[] => {
@@ -164,7 +187,7 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
       </div>
       <Kpis
         values={[
-          { label: "แผนส่งมอบเดือนนี้", value: scope.length },
+          { label: month ? "แผนส่งมอบเดือนนี้" : "แผนส่งมอบในช่วงที่แสดง", value: plannedThisMonth },
           { label: "Actual Delivered", value: m.delivered },
           { label: "Ready / Waiting Truck", value: m.ready + m.waitingTruck },
           { label: "Waiting for Pair", value: m.waitingPair },
@@ -184,6 +207,9 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
               }}
             />
           </label>
+          <button onClick={() => { setMonth(""); setWeek(0); }}>
+            แสดงทุกเดือน
+          </button>
           <label>
             มุมมอง
             <select value={view} onChange={(e) => setView(e.target.value)}>
@@ -214,15 +240,22 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
           <Badge value="Delivered" />
         </div>
         {view === "weekly" ? (
-          <div className="mb-board">
+          <div>
+            {months.map((boardMonth) => (
+            <section className="mb-board-month" key={boardMonth}>
+              <h3>{monthLabel(boardMonth)}</h3>
+              <div className="mb-board">
             {[1, 2, 3, 4, 5].map((w) => (
               <section
-                className={`mb-week ${week === w ? "selected" : ""}`}
+                className={`mb-week ${month === boardMonth && week === w ? "selected" : ""}`}
                 key={w}
               >
                 <button
                   className="mb-week-head"
-                  onClick={() => setWeek(week === w ? 0 : w)}
+                  onClick={() => {
+                    setMonth(boardMonth);
+                    setWeek(month === boardMonth && week === w ? 0 : w);
+                  }}
                 >
                   W{w}
                   <small>
@@ -230,7 +263,7 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
                   </small>
                 </button>
                 {scope
-                  .filter((i) => weekOf(boardDate(i)!) === w)
+                  .filter((i) => boardDate(i)!.startsWith(boardMonth) && weekOf(boardDate(i)!) === w)
                   .map((i) => {
                     let s = status(i, p.data, p.asOf);
                     if (
@@ -253,14 +286,19 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
                       >
                         <strong>{i.id}</strong>
                         <span>{s === "Delivered" ? "✓ Delivered" : s}</span>
-                        <small>{thaiDate(boardDate(i))}</small>
+                        <small>{i.actual.deliveryDate
+                          ? `(Actual ${actualLabel(i.actual.deliveryDate)})`
+                          : thaiDate(boardDate(i))}</small>
                       </button>
                     );
                   })}
-                {!scope.some((i) => weekOf(boardDate(i)!) === w) && (
+                {!scope.some((i) => boardDate(i)!.startsWith(boardMonth) && weekOf(boardDate(i)!) === w) && (
                   <div className="mb-no-items">No Items</div>
                 )}
               </section>
+            ))}
+              </div>
+            </section>
             ))}
           </div>
         ) : (
