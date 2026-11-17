@@ -302,7 +302,7 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
                         <strong className={`mb-item-type-${i.itemType.toLowerCase()}`}>{i.id}</strong>
                         <span>{s === "Delivered" ? "✓ Delivered" : s}</span>
                         <small>{i.actual.deliveryDate
-                          ? `(Actual ${actualLabel(i.actual.deliveryDate)})`
+                          ? `Plan ${i.baseline.deliveryDate ? actualLabel(i.baseline.deliveryDate) : "—"} (Actual ${actualLabel(i.actual.deliveryDate)})`
                           : thaiDate(boardDate(i))}</small>
                       </button>
                     );

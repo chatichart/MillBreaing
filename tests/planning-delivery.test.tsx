@@ -25,7 +25,7 @@ it("places a November 17 actual in W3 despite a later plan and counts the same d
   fireEvent.change(screen.getByLabelText("เดือน"), { target: { value: "2026-11" } });
 
   const w3 = screen.getByRole("button", { name: "W3 15–21" }).closest("td")!;
-  const card = within(w3).getByRole("button", { name: /L1 ✓ Delivered \(Actual 17\/11\/69\)/ });
+  const card = within(w3).getByRole("button", { name: /L1 ✓ Delivered Plan 20\/12\/69 \(Actual 17\/11\/69\)/ });
   fireEvent.click(card);
   expect(openItem).toHaveBeenCalledWith("L1");
   expect(screen.getByText("Actual Delivered").parentElement!.textContent).toBe("Actual Delivered1");
