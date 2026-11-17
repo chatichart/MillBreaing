@@ -560,16 +560,25 @@
   overflow: auto;
   padding: 4px 0 12px;
 }
-.mb-monthly-board {
-  min-width: 1200px;
+.mb-app table.mb-monthly-board {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
   border-collapse: separate;
-  border-spacing: 4px;
+  border-spacing: 3px;
 }
-.mb-monthly-board th,
-.mb-monthly-board td {
+.mb-app .mb-monthly-board th,
+.mb-app .mb-monthly-board td {
+  min-width: 0;
+  padding: 7px 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
   border-radius: 5px;
   vertical-align: top;
 }
+.mb-monthly-board thead th:first-child { width: 12%; }
+.mb-monthly-board thead th:nth-child(n+2):nth-child(-n+6) { width: 13.6%; }
+.mb-monthly-board thead th:nth-child(n+7) { width: 5%; }
 .mb-monthly-board thead th {
   background: #d9eafb;
   color: #10345b;
@@ -578,19 +587,29 @@
 .mb-monthly-board tbody th,
 .mb-monthly-board tfoot th {
   background: #e5f0fb;
-  min-width: 145px;
 }
 .mb-monthly-board th small {
   display: block;
   margin-top: 8px;
   font-weight: normal;
 }
-.mb-monthly-board td.mb-week {
-  min-width: 145px;
-  padding: 8px;
+.mb-app .mb-monthly-board td.mb-week {
+  min-width: 0;
+  padding: 5px;
 }
-.mb-monthly-board .mb-board-card { margin-bottom: 6px; }
-.mb-monthly-board .mb-week-head { font-size: 11px; padding: 2px 2px 6px; }
+.mb-app .mb-monthly-board .mb-board-card {
+  min-width: 0;
+  padding: 7px;
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
+.mb-app .mb-monthly-board .mb-week-head {
+  flex-wrap: wrap;
+  gap: 2px;
+  font-size: 11px;
+  padding: 2px 2px 6px;
+}
+.mb-monthly-board .mb-no-items { padding: 12px 2px; }
 .mb-monthly-board .mb-board-total {
   background: #e5f0fb;
   text-align: center;
