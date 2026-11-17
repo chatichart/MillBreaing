@@ -19,10 +19,10 @@ The standalone web app uses Node24 + React + PostgreSQL. SPFx sources and older 
 
 1. Create a single-tenant Microsoft Entra App Registration. Set **Web** redirect URI exactly `https://millbearing.realsoluplus.com/auth/callback`. No SPA redirect and no implicit grants are needed.
 2. Set `DEMO_MODE=off`, `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, and server-side `ENTRA_CLIENT_SECRET`. Generate a random `SESSION_SECRET` with at least32 characters. Keep secrets only in Dokploy; never commit them or paste them into chat.
-3. Set `ENTRA_ADMIN_OBJECT_IDS` to comma-separated Entra **user Object IDs** of authorized approvers (not email addresses or application IDs). Their tenant must match `ENTRA_TENANT_ID`. Approvers manage requests but still need project Viewer/Editor approval themselves to see/edit project data.
+3. Set `ENTRA_ADMIN_OBJECT_IDS` to comma-separated Entra **user Object IDs** of authorized approvers (not email addresses or application IDs). Their tenant must match `ENTRA_TENANT_ID`. Configured approvers automatically have Editor access in their tenant, including uploads, without requesting approval. Removing an Object ID removes this override; the stored approval status then applies.
 4. Set `UPLOAD_DIR=/data/uploads`; mount a persistent named volume there before enabling uploads. Back up that volume and PostgreSQL together. Keep database internal, use a dedicated least-privilege DB user. Set `DATABASE_SSL=true` only where PostgreSQL TLS is configured with a trusted CA; certificate verification is not disabled.
 5. Redeploy. Startup creates the production schema and seeds a separate initial100 project only if missing. It **does not import public demo data**. No default accounts/passwords are created.
-6. New Entra users select Viewer or Editor and submit a request. Only configured approvers can approve, deny, change or revoke. The server checks current access for every read/write/download; changes apply to existing sessions on their next request.
+6. Other Entra users select Viewer or Editor and submit a request. Only configured approvers can approve, deny, change or revoke. The server checks current access for every read/write/download; changes apply to existing sessions on their next request.
 7. Verify real tenant sign-in, failed callback/state, request approval, Viewer read-only, Editor save/PDF, revocation, session expiry and restart on the deployed origin before calling this production-ready. Automated integration tests use a test identity provider, not live Entra credentials.
 
 ## Backups and recovery

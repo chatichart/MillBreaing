@@ -53,10 +53,12 @@ export function createApp(config:Config, store:Store, provider:IdentityProvider)
     await regenerate(req); req.session.userId=user.id; req.session.csrf=randomBytes(32).toString('hex');
     await saveSession(req); res.redirect('/');
   }));
+  const isAdmin=(user:User)=>config.adminObjectIds.includes(user.object_id.toLowerCase())&&user.tenant_id===config.tenantId;
+  const effectiveUser=(user:User):User=>isAdmin(user)?{...user,status:'approved',role:'editor'}:user;
   const authenticated=asyncMiddleware(async(req,_res,next)=>{
     const user=req.session.userId?await store.user(req.session.userId):undefined;
     if(!user) throw new HttpError(401,'Sign in required');
-    req.mbUser=user; next();
+    req.mbUser=effectiveUser(user); next();
   });
   const csrf=(req:Request,_res:Response,next:NextFunction) => {
     const token=req.get('X-CSRF-Token')||''; const expected=req.session.csrf||'';
@@ -70,7 +72,6 @@ export function createApp(config:Config, store:Store, provider:IdentityProvider)
   const editor=(req:Request,_res:Response,next:NextFunction)=>{
     if(req.mbUser?.role!=='editor') return next(new HttpError(403,'Editor permission required')); next();
   };
-  const isAdmin=(user:User)=>config.adminObjectIds.includes(user.object_id.toLowerCase())&&user.tenant_id===config.tenantId;
   const admin=(req:Request,_res:Response,next:NextFunction)=>{
     if(!req.mbUser||!isAdmin(req.mbUser)) return next(new HttpError(403,'Approver permission required')); next();
   };
@@ -94,7 +95,7 @@ export function createApp(config:Config, store:Store, provider:IdentityProvider)
   app.get('/api/data',authenticated,approved,asyncMiddleware(async(_req,res)=>res.json(await store.snapshot())));
   app.put('/api/data',authenticated,csrf,approved,editor,asyncMiddleware(async(req,res)=>{
     const input=z.object({token:z.string().regex(/^\d+$/),data:z.unknown()}).strict().parse(req.body);
-    const result=await store.save(req.mbUser!,input.token,input.data);
+    const result=await store.save(req.mbUser!,input.token,input.data,effectiveUser);
     if(result.conflict) return res.status(409).json(result.conflict);
     res.json(result.snapshot);
   }));
@@ -113,8 +114,8 @@ export function createApp(config:Config, store:Store, provider:IdentityProvider)
     await writeFile(target,file.buffer,{flag:'wx'});
     try {
       await store.transaction(async c=>{
-        const {rows:[current]}=await c.query('SELECT status,role FROM mb_users WHERE id=$1 FOR SHARE',[req.mbUser!.id]);
-        if(current?.status!=='approved'||current.role!=='editor') throw new HttpError(403,'Editor permission required');
+        const {rows:[current]}=await c.query('SELECT * FROM mb_users WHERE id=$1 FOR SHARE',[req.mbUser!.id]);
+        if(!current || effectiveUser(current).status!=='approved'||effectiveUser(current).role!=='editor') throw new HttpError(403,'Editor permission required');
         await c.query(`INSERT INTO mb_documents(id,item_id,kind,revision,original_name,storage_name,size_bytes,uploaded_by) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
           [id,itemId,kind,revision,file.originalname,storageName,file.size,req.mbUser!.id]);
         await c.query('INSERT INTO mb_audit(actor_id,action,details) VALUES($1,$2,$3)',[req.mbUser!.id,'document.upload',{id,itemId,kind,revision}]);

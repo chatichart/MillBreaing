@@ -45,10 +45,11 @@ export class Store {
       await c.query('INSERT INTO mb_audit(actor_id,action,details) VALUES($1,$2,$3)',[actor.id,'access.decision',{userId:id,role}]);
     });
   }
-  async save(actor:User, token:string, input:unknown) {
+  async save(actor:User, token:string, input:unknown, resolveAccess:(user:User)=>User = user=>user) {
     return this.transaction(async c => {
       // Lock identity until commit so revocation and writes have a defined ordering.
-      const {rows:[currentUser]} = await c.query('SELECT * FROM mb_users WHERE id=$1 FOR SHARE',[actor.id]);
+      const {rows:[storedUser]} = await c.query('SELECT * FROM mb_users WHERE id=$1 FOR SHARE',[actor.id]);
+      const currentUser = storedUser ? resolveAccess(storedUser) : undefined;
       if (currentUser?.status !== 'approved' || currentUser.role !== 'editor') throw new HttpError(403,'Editor permission required');
       const {rows:[row]} = await c.query('SELECT data,revision FROM mb_projects WHERE id=$1 FOR UPDATE',['MILL-BEARING']);
       if (String(row.revision) !== token) return {conflict:{data:row.data, token:String(row.revision)}};

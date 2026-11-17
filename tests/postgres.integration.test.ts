@@ -64,6 +64,26 @@ describe('PostgreSQL + HTTP authorization and concurrency',()=>{
     await a.agent.put(`/api/admin/users/${pending.id}`).set('Origin',config.origin).set('X-CSRF-Token',a.csrf).send({role:null}).expect(200);
     await p.agent.get('/api/data').expect(403);
   });
+  it('gives configured admins immediate editor access and removes the override when unlisted',async()=>{
+    const a=await login(admin);
+    const session=(await a.agent.get('/api/session').expect(200)).body;
+    expect(session.user.status).toBe('approved');expect(session.user.role).toBe('editor');
+    const base=(await a.agent.get('/api/data').expect(200)).body;
+    await a.agent.put('/api/data').send(base).expect(403);
+    await a.agent.put('/api/data').set('Origin',config.origin).set('X-CSRF-Token',a.csrf).send(base).expect(200);
+    const uploaded=await a.agent.post('/api/documents').set('Origin',config.origin).set('X-CSRF-Token',a.csrf)
+      .field('itemId','L-001').field('kind','OTHER').field('revision','admin').attach('file',Buffer.from('%PDF-1.7\ntest pdf\n%%EOF'),'admin.pdf').expect(201);
+    await a.agent.get(uploaded.body.url).expect(200);
+    expect((await store.user(admin.id))!.status).toBe('new');
+    const ids=config.adminObjectIds;config.adminObjectIds=[];
+    try {
+      expect((await a.agent.get('/api/session').expect(200)).body.user.role).toBeNull();
+      await a.agent.get('/api/data').expect(403);
+      await a.agent.get(uploaded.body.url).expect(403);
+      await a.agent.put('/api/data').set('Origin',config.origin).set('X-CSRF-Token',a.csrf).send(base).expect(403);
+      await a.agent.get('/api/admin/users').expect(403);
+    } finally {config.adminObjectIds=ids;}
+  });
   it('commits exactly one simultaneous edit and rejects the stale writer',async()=>{
     const base=await store.snapshot(),a=structuredClone(base.data),b=structuredClone(base.data);
     a.items[0].baseline.castingDate='2026-11-16';b.items[1].baseline.castingDate='2026-11-17';
@@ -71,7 +91,7 @@ describe('PostgreSQL + HTTP authorization and concurrency',()=>{
     expect(results.filter(r=>r.snapshot)).toHaveLength(1);expect(results.filter(r=>r.conflict)).toHaveLength(1);
     const latest=await store.snapshot();expect(Number(latest.token)).toBe(Number(base.token)+1);
     expect(latest.data.items.filter(i=>i.baseline.castingDate)).toHaveLength(1);
-    expect(latest.data.auditEvents.every(e=>e.by==='Editor')).toBe(true);
+    expect(latest.data.auditEvents.slice(base.data.auditEvents.length).every(e=>e.by==='Editor')).toBe(true);
     await store.seed();expect((await store.snapshot()).token).toBe(latest.token);
   });
   it('validates PDFs, binds metadata, and protects download after revocation',async()=>{
