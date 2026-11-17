@@ -99,7 +99,8 @@ export function createApp(config:Config, store:Store, provider:IdentityProvider)
     if(result.conflict) return res.status(409).json(result.conflict);
     res.json(result.snapshot);
   }));
-  const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:20*1024*1024,files:1,fields:3,fieldSize:500}});
+  // Browser multipart filenames use UTF-8; Latin-1 corrupts Thai names before metadata matching.
+  const upload=multer({defParamCharset:'utf8',storage:multer.memoryStorage(),limits:{fileSize:20*1024*1024,files:1,fields:3,fieldSize:500}});
   app.post('/api/documents',authenticated,csrf,approved,editor,upload.single('file'),asyncMiddleware(async(req,res)=>{
     const {itemId,kind,revision}=z.object({itemId:z.string().regex(/^[LBAU]-\d{3,}$/),kind:z.enum(documentKinds),revision:z.string().trim().min(1).max(100)}).strict().parse(req.body);
     const file=req.file;

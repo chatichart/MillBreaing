@@ -109,6 +109,18 @@ describe('PostgreSQL + HTTP authorization and concurrency',()=>{
     await store.decide(admin,viewer.id,null);await v.agent.get(uploaded.body.url).expect(403);
     await store.decide(admin,viewer.id,'viewer');
   });
+  it('preserves Thai PDF filenames through upload and metadata attachment',async()=>{
+    const e=await login(editor),name='รายชื่อผู้รับเหมางานก่อสร้างภายในโรงงาน.pdf';
+    const uploaded=await e.agent.post('/api/documents').set('Origin',config.origin).set('X-CSRF-Token',e.csrf)
+      .field('itemId','L-001').field('kind','MATERIAL_CERT').field('revision','1')
+      .attach('file',Buffer.from('%PDF-1.7\nThai filename test\n%%EOF'),name).expect(201);
+    const id=uploaded.body.url.split('/').pop();
+    expect((await pool.query('SELECT original_name FROM mb_documents WHERE id=$1',[id])).rows[0].original_name).toBe(name);
+    const base=await store.snapshot(),next=structuredClone(base.data);
+    next.documentMetadata.push({id:randomUUID(),itemId:'L-001',kind:'MATERIAL_CERT',revision:'1',name,url:uploaded.body.url,uploadedAt:'',uploadedBy:''});
+    await e.agent.put('/api/data').set('Origin',config.origin).set('X-CSRF-Token',e.csrf).send({token:base.token,data:next}).expect(200);
+    await e.agent.get(uploaded.body.url).expect(200);
+  });
   it('isolates public trial edits, blocks cross-origin writes, and has conflict protection',async()=>{
     await initializeDemo(store);const demo=demoApp({...config,demoMode:'editor'},store);
     const before=await store.snapshot();const base=(await request(demo).get('/api/data').expect(200)).body;
