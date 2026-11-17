@@ -15,6 +15,8 @@ import "../styles/app.css";
 export interface AppProps {
   repository: Repository;
   user: string;
+  accountActions?: React.ReactNode;
+  accessManagement?: {onOpen:()=>void;content:React.ReactNode};
 }
 const pages = [
   "Dashboard",
@@ -25,6 +27,8 @@ const pages = [
 export default function App({
   repository,
   user,
+  accountActions,
+  accessManagement,
 }: AppProps): React.ReactElement {
   const [snapshot, setSnapshot] = React.useState<Snapshot | null>(null);
   const savedData = React.useRef<AppData>();
@@ -181,9 +185,11 @@ export default function App({
                 {name}
               </button>
             ))}
+            {accessManagement && <button className={page===4?'active':''} onClick={()=>{navigate(4);accessManagement.onOpen();}}><span aria-hidden="true">⚿</span>จัดการคำขอ / สิทธิ์</button>}
           </nav>
           <div className="mb-sidebar-foot">
             PURCHASING DEPARTMENT<small>{user}</small>
+            {accountActions}
             <span className="mb-live-dot" />
             {repository.mode === "sharepoint"
               ? "SharePoint Online"
@@ -194,9 +200,9 @@ export default function App({
           <header className="mb-header">
             <div>
               <span className="mb-eyebrow">PURCHASING / MILL BEARING</span>
-              <h1>{pages[page]}</h1>
+              <h1>{page===4?"จัดการคำขอ / สิทธิ์":pages[page]}</h1>
               <p>
-                {page === 0
+                {page === 4 ? "ตรวจสอบคำขอและจัดการสิทธิ์การใช้งาน" : page === 0
                   ? "ภาพรวมการติดตามผู้ผลิตและประสิทธิภาพการส่งมอบ"
                   : page === 1
                     ? "ติดตามความคืบหน้าและแผนส่งมอบจากผู้ผลิต"
@@ -281,8 +287,9 @@ export default function App({
               </button>
             </section>
           )}
+          {page===4 && accessManagement?.content}
           {props && (
-            <>
+            <div hidden={page===4}>
               <div className="mb-content-meta">
                 <span>
                   PROJECT <b>MILL-BEARING</b>
@@ -399,7 +406,7 @@ export default function App({
                 </div>
                 {page === 3 && <PlanningCoordination {...props} />}
               </div>
-            </>
+            </div>
           )}
           <footer className="mb-footer">
             Realsoluplus Co., Ltd. • Supplier follow-up & delivery coordination{" "}

@@ -134,3 +134,20 @@ it("preserves meeting drafts on navigation and handles cleared text fields", asy
   expect(screen.getByLabelText("Responsible Person")).toBeTruthy();
   confirm.mockRestore();
 });
+
+it("opens access management from the sidebar and returns to project pages", async () => {
+  const open=vi.fn();
+  render(<App repository={repository()} user="buyer" accountActions={<button>ออกจากระบบ</button>}
+    accessManagement={{onOpen:open,content:<p>รายการคำขอทดสอบ</p>}} />);
+  await screen.findByText("Delivery S-Curve");
+  const manage=screen.getByRole("button",{name:/จัดการคำขอ/});
+  expect(manage.closest('aside')).toBeTruthy();
+  expect(screen.getByRole('button',{name:'ออกจากระบบ'}).closest('aside')).toBeTruthy();
+  fireEvent.click(manage);
+  expect(open).toHaveBeenCalledOnce();
+  expect(screen.getByText('รายการคำขอทดสอบ')).toBeTruthy();
+  expect(screen.queryByRole('heading',{name:'Dashboard',level:1})).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:/Dashboard/}));
+  expect(screen.getByRole('heading',{name:'Dashboard',level:1})).toBeTruthy();
+  expect(screen.queryByText('รายการคำขอทดสอบ')).toBeNull();
+});
