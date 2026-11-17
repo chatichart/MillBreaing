@@ -54,7 +54,10 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
   }
   const inRange = (date: string | null): boolean =>
     !!date && months.includes(date.slice(0, 7));
-  const plannedThisMonth = p.items.filter((i) => inRange(forecast(i)) && matchesStatus(i)).length;
+  const plannedScope = p.items.filter((i) => inRange(forecast(i)) && matchesStatus(i));
+  const actualScope = p.items.filter((i) => inRange(i.actual.deliveryDate) &&
+    i.actual.deliveryDate! <= p.asOf && matchesStatus(i));
+  const plannedThisMonth = plannedScope.length;
   const scope = p.items.filter((i) => inRange(boardDate(i)) && matchesStatus(i));
   const monthLabel = (value: string): string =>
     new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric", timeZone: "UTC" })
@@ -63,6 +66,12 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
     `${date.slice(8, 10)}/${date.slice(5, 7)}/${String(Number(date.slice(0, 4)) + 543).slice(-2)}`;
   const visible = scope.filter((i) => !week || weekOf(boardDate(i)!) === week);
   const m = metrics(p.data, scope, p.asOf);
+  const deliveryCounts = (planned: Item[], actual: Item[]): React.ReactElement => (
+    <div className="mb-delivery-counts">
+      <span>แผน<b>{planned.length}</b></span>
+      <span>ส่งจริง<b>{actual.length}</b></span>
+    </div>
+  );
   const issues = (i: Item): string[] => {
     const result = [];
     if (delayDays(i, p.asOf) > 0 && !confirmed(i, p.data))
@@ -253,6 +262,7 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
             </button>
           ))}
         </div>
+        <p>ยอดสรุป: แผนตาม Delivery Plan • ส่งจริงตาม Delivery Actual ถึงวันที่ {thaiDate(p.asOf)}</p>
         {view === "weekly" ? (
           <div className="mb-table-scroll">
             <table className="mb-monthly-board" aria-label="แผนส่งมอบรายเดือนและสัปดาห์">
@@ -262,17 +272,19 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
                   {[1, 2, 3, 4, 5].map(w => (
                     <th scope="col" key={w}>W{w} | {(w - 1) * 7 + 1}–{w === 5 ? "สิ้นเดือน" : w * 7}</th>
                   ))}
-                  {itemTypes.map(type => <th scope="col" key={type}>{typeLabels[type]}</th>)}
+                  {itemTypes.map(type => <th scope="col" key={type}>{typeLabels[type]}<small>แผน / ส่งจริง</small></th>)}
                 </tr>
               </thead>
               <tbody>
             {months.map((boardMonth) => {
               const monthItems = scope.filter(i => boardDate(i)!.startsWith(boardMonth));
+              const monthPlans = plannedScope.filter(i => forecast(i)!.startsWith(boardMonth));
+              const monthActuals = actualScope.filter(i => i.actual.deliveryDate!.startsWith(boardMonth));
               return (
             <tr key={boardMonth}>
               <th scope="row">
                 {monthLabel(boardMonth)}
-                <small>รวม {monthItems.length} รายการ</small>
+                {deliveryCounts(monthPlans, monthActuals)}
               </th>
             {[1, 2, 3, 4, 5].map((w) => (
               <td
@@ -315,7 +327,10 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
               </td>
             ))}
               {itemTypes.map(type => (
-                <td className="mb-board-total" key={type}>{monthItems.filter(i => i.itemType === type).length}</td>
+                <td className="mb-board-total" key={type}>{deliveryCounts(
+                  monthPlans.filter(i => i.itemType === type),
+                  monthActuals.filter(i => i.itemType === type),
+                )}</td>
               ))}
             </tr>
               );
@@ -323,9 +338,15 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
               </tbody>
               <tfoot>
                 <tr>
-                  <th scope="row">รวมทั้งสิ้น {scope.length} รายการ</th>
-                  {[1, 2, 3, 4, 5].map(w => <td className="mb-board-total" key={w}>{scope.filter(i => weekOf(boardDate(i)!) === w).length}</td>)}
-                  {itemTypes.map(type => <td className="mb-board-total" key={type}>{scope.filter(i => i.itemType === type).length}</td>)}
+                  <th scope="row">รวมช่วงที่แสดง{deliveryCounts(plannedScope, actualScope)}</th>
+                  {[1, 2, 3, 4, 5].map(w => <td className="mb-board-total" key={w}>{deliveryCounts(
+                    plannedScope.filter(i => weekOf(forecast(i)!) === w),
+                    actualScope.filter(i => weekOf(i.actual.deliveryDate!) === w),
+                  )}</td>)}
+                  {itemTypes.map(type => <td className="mb-board-total" key={type}>{deliveryCounts(
+                    plannedScope.filter(i => i.itemType === type),
+                    actualScope.filter(i => i.itemType === type),
+                  )}</td>)}
                 </tr>
               </tfoot>
             </table>

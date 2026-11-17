@@ -8,6 +8,29 @@ import { curve } from "../src/domain/rules";
 
 afterEach(cleanup);
 
+it("counts monthly plans independently of actual deliveries, including when the delivered card moved months", () => {
+  const data = emptyData();
+  const early = makeItem("early", "LOAD");
+  early.baseline.deliveryDate = "2026-12-17";
+  early.actual.deliveryDate = "2026-11-17";
+  const pending = makeItem("pending", "LOAD");
+  pending.baseline.deliveryDate = "2026-12-22";
+  const future = makeItem("future", "UNLOAD");
+  future.baseline.deliveryDate = "2026-12-24";
+  future.actual.deliveryDate = "2026-12-24";
+  data.items = [early, pending, future];
+  render(<PlanningCoordination data={data} items={data.items} asOf="2026-11-17"
+    canWrite={true} busy={false} user="test" onDirty={vi.fn()} openItem={vi.fn()} save={vi.fn()} />);
+  const november = screen.getByRole("rowheader", { name: /พฤศจิกายน 2569/ }).closest("tr")!;
+  const december = screen.getByRole("rowheader", { name: /ธันวาคม 2569/ }).closest("tr")!;
+  expect(within(november).getAllByRole("cell")[5].textContent).toBe("แผน0ส่งจริง1");
+  expect(within(december).getAllByRole("cell")[5].textContent).toBe("แผน2ส่งจริง0");
+  expect(within(december).getAllByRole("cell")[8].textContent).toBe("แผน1ส่งจริง0");
+  fireEvent.change(screen.getByLabelText("เดือน"), { target: { value: "2026-12" } });
+  const footer = screen.getByRole("table", { name: "แผนส่งมอบรายเดือนและสัปดาห์" }).querySelector("tfoot")!;
+  expect(within(footer).getAllByRole("cell")[5].textContent).toBe("แผน2ส่งจริง0");
+});
+
 it("filters the board and totals by clickable status legend and toggles back to all", () => {
   const data = emptyData();
   const delivered = makeItem("delivered", "LOAD");
@@ -26,16 +49,16 @@ it("filters the board and totals by clickable status legend and toggles back to 
   expect(deliveredFilter.getAttribute("aria-pressed")).toBe("true");
   expect(within(board).getByRole("button", { name: /delivered ✓ Delivered/ })).toBeTruthy();
   expect(within(board).queryByRole("button", { name: /planned Planned/ })).toBeNull();
-  expect(within(board).getByRole("rowheader", { name: "รวมทั้งสิ้น 1 รายการ" })).toBeTruthy();
+  expect(within(board).getByRole("rowheader", { name: /รวมช่วงที่แสดง/ }).textContent).toBe("รวมช่วงที่แสดงแผน1ส่งจริง1");
   fireEvent.click(deliveredFilter);
-  expect(within(board).getByRole("rowheader", { name: "รวมทั้งสิ้น 3 รายการ" })).toBeTruthy();
+  expect(within(board).getByRole("rowheader", { name: /รวมช่วงที่แสดง/ }).textContent).toBe("รวมช่วงที่แสดงแผน3ส่งจริง1");
   fireEvent.click(screen.getByRole("button", { name: "กรองสถานะ Planned / Expected" }));
   expect(within(board).getByRole("button", { name: /planned Planned/ })).toBeTruthy();
   expect(within(board).queryByRole("button", { name: /delivered ✓ Delivered/ })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "กรองสถานะ Delayed" }));
   expect(within(board).getByRole("button", { name: /late At Risk \/ Delayed/ })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "ทุกสถานะ", exact: true }));
-  expect(within(board).getByRole("rowheader", { name: "รวมทั้งสิ้น 3 รายการ" })).toBeTruthy();
+  expect(within(board).getByRole("rowheader", { name: /รวมช่วงที่แสดง/ }).textContent).toBe("รวมช่วงที่แสดงแผน3ส่งจริง1");
 });
 
 it("places a November 17 actual in W3 despite a later plan and counts the same delivery as S-Curve", () => {
@@ -105,7 +128,7 @@ it("shows every month through December 2570 by default and collapses to a select
   expect(screen.getByRole("rowheader", { name: /พฤศจิกายน 2569/ })).toBeTruthy();
   expect(screen.getByRole("rowheader", { name: /ธันวาคม 2570/ })).toBeTruthy();
   const decemberRow = screen.getByRole("rowheader", { name: /ธันวาคม 2570/ }).closest("tr")!;
-  expect(within(decemberRow).getAllByRole("cell").slice(-4).map(cell => cell.textContent)).toEqual(["1", "0", "0", "0"]);
+  expect(within(decemberRow).getAllByRole("cell").slice(-4).map(cell => cell.textContent)).toEqual(["แผน1ส่งจริง0", "แผน0ส่งจริง0", "แผน0ส่งจริง0", "แผน0ส่งจริง0"]);
   expect(screen.getByRole("button", { name: /December-end.*31\/12\/2027/ })).toBeTruthy();
   expect(screen.queryByRole("button", { name: /outside.*01\/01\/2028/ })).toBeNull();
   fireEvent.change(screen.getByLabelText("เดือน"), { target: { value: "2027-12" } });

@@ -617,6 +617,19 @@
   font-size: 18px;
   font-weight: bold;
 }
+.mb-monthly-board .mb-delivery-counts {
+  margin-top: 5px;
+  font-size: 10px;
+  font-weight: normal;
+}
+.mb-delivery-counts span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: 3px;
+}
+.mb-delivery-counts b { font-size: 13px; }
 .mb-item-type-load { color: #b42318; }
 .mb-item-type-bottom { color: #7928a1; }
 .mb-item-type-al_cover { color: #194cc0; }
