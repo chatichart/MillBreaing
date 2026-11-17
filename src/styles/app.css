@@ -779,3 +779,14 @@
 .mb-upload-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
 .mb-upload-actions span { color: #64748b; font-size: 12px; }
 .mb-upload-actions button { min-height: 42px; }
+
+.mb-document-form { align-items: start; }
+.mb-document-form select, .mb-document-form input:not([type="file"]), .mb-document-form .mb-file-selection { height: 40px; min-height: 40px; box-sizing: border-box; }
+.mb-document-form .mb-file-selection { padding: 3px 6px; }
+.mb-document-form .mb-file-selection button { height: 32px; padding: 4px 10px; }
+.mb-document-form .mb-file-selection span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mb-app button.mb-delete-document { margin-left: 12px; color: #b42318; border-color: #f1b8b3; background: #fff8f7; }
+.mb-app button.mb-delete-document:hover { background: #ffebe8; border-color: #b42318; }
+
+.mb-document-form .mb-file-picker { gap: 5px; }
+.mb-document-form .mb-file-picker > label { font-size: 11px; }

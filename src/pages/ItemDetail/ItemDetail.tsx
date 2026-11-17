@@ -537,7 +537,7 @@ export default function ItemDetail(
           Material Certificate และ QC Dimension Check แยกประเภท • เก็บทุก Revision
           • PDF ไม่เกิน 20 MB
         </p>
-        <div className="mb-form">
+        <div className="mb-form mb-document-form">
           <label>
             ประเภทเอกสาร
             <select
@@ -574,7 +574,7 @@ export default function ItemDetail(
               <button type="button" disabled={disabled || p.repository.mode==='demo'} onClick={()=>fileInput.current?.click()}>
                 {file?'เปลี่ยนไฟล์ PDF':'เลือกไฟล์ PDF'}
               </button>
-              <span>{file?`${file.name} • ${(file.size/1024/1024).toFixed(2)} MB`:'ยังไม่ได้เลือกไฟล์'}</span>
+              <span title={file?.name}>{file?`${file.name} • ${(file.size/1024/1024).toFixed(2)} MB`:'ยังไม่ได้เลือกไฟล์'}</span>
             </div>
           </div>
         </div>
@@ -620,6 +620,14 @@ export default function ItemDetail(
                     <a href={m.url} download={m.name}>
                       Download PDF
                     </a>
+                    {p.deleteDocument&&<button type="button" className="mb-delete-document" aria-label={`ลบไฟล์ ${m.name}`}
+                      disabled={disabled||dirty} title={dirty?'กรุณากด Save Update ก่อนลบเอกสาร':undefined}
+                      onClick={()=>{
+                        if(!window.confirm(`ยืนยันลบไฟล์ "${m.name}" (Revision ${m.revision})?\nเอกสารจะถูกนำออกจากรายการและไม่สามารถเปิดลิงก์เดิมได้`)) return;
+                        setUploading(true);setUploadMessage(null);
+                        void p.deleteDocument!(m.url).then(ok=>setUploadMessage({error:!ok,text:ok?'ลบเอกสารเรียบร้อยแล้ว':'ลบเอกสารไม่สำเร็จ กรุณาตรวจข้อความแจ้งเตือนด้านบน'}))
+                          .finally(()=>setUploading(false));
+                      }}>ลบไฟล์</button>}
                   </td>
                 </tr>
               ))}

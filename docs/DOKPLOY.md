@@ -38,3 +38,9 @@ Public trial uses `mb_demo_projects`; production uses `mb_projects`, `mb_users`,
 Integration tests start a disposable PostgreSQL18 process on localhost55439 and write only a temporary test directory. They test real SQL transactions, simultaneous writes, authorization, CSRF, approval/revocation and document access. Local preview is separate: `npm run preview` opens `/preview.html` and never connects to production.
 
 References: [Dokploy build types](https://docs.dokploy.com/docs/core/applications/build-type), [Dokploy databases](https://docs.dokploy.com/docs/core/databases), [Microsoft Entra OIDC](https://learn.microsoft.com/entra/identity-platform/v2-protocols-oidc).
+
+## Document removal
+
+Editors can confirm removal of an attached PDF. The server checks CSRF, current permissions and project revision, removes the attachment metadata and blocks downloads, and records the action in the audit. Files and their SQL rows are retained privately with `deleted_at` for recovery and backup reconciliation; this action does not purge bytes from the upload volume. Required-document workflow checks still apply.
+
+Production uploads use the named volume `mill-bearing-uploads` mounted at `/data/uploads`. Keep this mount when redeploying.

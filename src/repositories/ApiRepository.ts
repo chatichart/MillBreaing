@@ -17,6 +17,14 @@ export class ApiRepository implements Repository {
     if(!res.ok) throw new Error(body.error||'บันทึกไม่สำเร็จ');
     return {data:dataSchema.parse(body.data),token:body.token};
   }
+  async deleteDocument(base:Snapshot,url:string):Promise<Snapshot>{
+    if(!/^\/api\/documents\/[0-9a-f-]{36}$/.test(url)) throw new Error('Invalid document URL');
+    const res=await fetch(url,{method:'DELETE',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':this.csrf},body:JSON.stringify({token:base.token})});
+    const body=await res.json();
+    if(res.status===409) throw new ConflictError({data:dataSchema.parse(body.data),token:body.token});
+    if(!res.ok) throw new Error(body.error||'ลบเอกสารไม่สำเร็จ');
+    return {data:dataSchema.parse(body.data),token:body.token};
+  }
   async upload(itemId:string,file:File,kind:string,revision:string):Promise<string>{
     const form=new FormData(); form.append('itemId',itemId); form.append('kind',kind); form.append('revision',revision); form.append('file',file);
     const res=await fetch('/api/documents',{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':this.csrf},body:form});

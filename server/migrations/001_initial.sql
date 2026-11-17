@@ -24,3 +24,5 @@ CREATE TABLE IF NOT EXISTS mb_sessions (
   sid varchar PRIMARY KEY, sess json NOT NULL, expire timestamp(6) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS mb_sessions_expire ON mb_sessions(expire);
+
+ALTER TABLE mb_documents ADD COLUMN IF NOT EXISTS deleted_at timestamptz;

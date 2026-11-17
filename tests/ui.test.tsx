@@ -174,3 +174,19 @@ it("guides PDF selection and uploads the selected document revision", async () =
   expect(screen.getByRole('link',{name:'View PDF'})).toBeTruthy();
   expect((button as HTMLButtonElement).disabled).toBe(true);
 });
+
+it("requires confirmation before removing an uploaded PDF", async () => {
+  const repo=repository();const base=await repo.load();
+  base.data.documentMetadata.push({id:'doc-delete',itemId:'L-001',kind:'OTHER',revision:'1',name:'ลบทดสอบ.pdf',url:'/api/documents/test',uploadedAt:'2026-11-17',uploadedBy:'buyer'});
+  repo.deleteDocument=vi.fn(async()=>({data:{...base.data,documentMetadata:[]},token:'removed'}));
+  render(<App repository={repo} user="buyer"/>);
+  await screen.findByText('Delivery S-Curve');fireEvent.click(screen.getByRole('button',{name:/Supplier Tracking/}));fireEvent.click(screen.getByRole('button',{name:'L-001'}));
+  const confirm=vi.spyOn(window,'confirm').mockReturnValue(false);
+  fireEvent.click(screen.getByRole('button',{name:'ลบไฟล์ ลบทดสอบ.pdf'}));
+  expect(confirm).toHaveBeenCalledWith(expect.stringContaining('ลบทดสอบ.pdf'));
+  expect(repo.deleteDocument).not.toHaveBeenCalled();
+  confirm.mockReturnValue(true);fireEvent.click(screen.getByRole('button',{name:'ลบไฟล์ ลบทดสอบ.pdf'}));
+  await screen.findByText('ลบเอกสารเรียบร้อยแล้ว');
+  expect(repo.deleteDocument).toHaveBeenCalledOnce();
+  expect(screen.queryByRole('button',{name:'ลบไฟล์ ลบทดสอบ.pdf'})).toBeNull();confirm.mockRestore();
+});

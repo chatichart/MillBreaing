@@ -12,6 +12,7 @@ export interface PageProps {
   onDirty: (dirty: boolean) => void;
   openItem: (id: string) => void;
   save: (next: AppData) => Promise<boolean>;
+  deleteDocument?: (url:string)=>Promise<boolean>;
   getSavedData?: () => AppData | undefined;
 }
 export function Badge({ value }: { value: string }): React.ReactElement {

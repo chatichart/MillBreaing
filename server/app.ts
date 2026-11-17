@@ -124,9 +124,16 @@ export function createApp(config:Config, store:Store, provider:IdentityProvider)
     } catch(e) {await unlink(target); throw e;}
     res.status(201).json({url:`/api/documents/${id}`});
   }));
+  app.delete('/api/documents/:id',authenticated,csrf,approved,editor,asyncMiddleware(async(req,res)=>{
+    const id=z.uuid().parse(req.params.id);
+    const {token}=z.object({token:z.string().regex(/^\d+$/)}).strict().parse(req.body);
+    const result=await store.deleteDocument(req.mbUser!,id,token,effectiveUser);
+    if(result.conflict) return res.status(409).json(result.conflict);
+    res.json(result.snapshot);
+  }));
   app.get('/api/documents/:id',authenticated,approved,asyncMiddleware(async(req,res)=>{
     const id=z.uuid().parse(req.params.id);
-    const {rows:[doc]}=await store.pool.query('SELECT * FROM mb_documents WHERE id=$1',[id]);
+    const {rows:[doc]}=await store.pool.query('SELECT * FROM mb_documents WHERE id=$1 AND deleted_at IS NULL',[id]);
     if(!doc) throw new HttpError(404,'Document not found');
     const snapshot=await store.snapshot();
     if(!snapshot.data.documentMetadata.some(m=>m.url===`/api/documents/${id}`) && doc.uploaded_by!==req.mbUser!.id && !isAdmin(req.mbUser!))

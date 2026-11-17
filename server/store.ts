@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { Pool, PoolClient } from 'pg';
 import { initialData } from '../src/domain/initialItems';
-import { AppData } from '../src/models/schema';
+import { AppData, dataSchema } from '../src/models/schema';
 import { HttpError, validateChange } from './policy';
 export interface User {id:string; tenant_id:string; object_id:string; display_name:string; email:string;
   role:'viewer'|'editor'|null; status:'new'|'pending'|'approved'|'denied'; requested_role:string|null}
@@ -45,6 +45,29 @@ export class Store {
       await c.query('INSERT INTO mb_audit(actor_id,action,details) VALUES($1,$2,$3)',[actor.id,'access.decision',{userId:id,role}]);
     });
   }
+  async deleteDocument(actor:User,id:string,token:string,resolveAccess:(user:User)=>User=user=>user) {
+    return this.transaction(async c=>{
+      const {rows:[storedUser]}=await c.query('SELECT * FROM mb_users WHERE id=$1 FOR SHARE',[actor.id]);
+      const user=storedUser?resolveAccess(storedUser):undefined;
+      if(user?.status!=='approved'||user.role!=='editor') throw new HttpError(403,'Editor permission required');
+      const {rows:[row]}=await c.query('SELECT data,revision FROM mb_projects WHERE id=$1 FOR UPDATE',['MILL-BEARING']);
+      if(String(row.revision)!==token) return {conflict:{data:row.data,token:String(row.revision)}};
+      const {rows:[doc]}=await c.query('SELECT * FROM mb_documents WHERE id=$1 AND deleted_at IS NULL FOR UPDATE',[id]);
+      const url=`/api/documents/${id}`,base=row.data as AppData;
+      const removed=base.documentMetadata.filter(m=>m.url===url);
+      if(!doc||!removed.length) throw new HttpError(404,'Attached document not found');
+      const next=structuredClone(base);
+      next.documentMetadata=next.documentMetadata.filter(m=>m.url!==url);
+      // Keep workflow validation: required certificates cannot disappear from ready/delivered items.
+      dataSchema.parse(next);
+      const at=new Date().toISOString();next.revision=row.revision+1;
+      next.auditEvents.push({id:randomUUID(),at,by:actor.display_name,entityId:doc.item_id,action:'Document removed',before:JSON.stringify(removed),after:''});
+      await c.query('UPDATE mb_documents SET deleted_at=now() WHERE id=$1',[id]);
+      await c.query('UPDATE mb_projects SET data=$2,revision=$3,updated_at=now() WHERE id=$1',['MILL-BEARING',next,next.revision]);
+      await c.query('INSERT INTO mb_audit(actor_id,action,details) VALUES($1,$2,$3)',[actor.id,'document.delete',{id,itemId:doc.item_id,name:doc.original_name}]);
+      return {snapshot:{data:next,token:String(next.revision)}};
+    });
+  }
   async save(actor:User, token:string, input:unknown, resolveAccess:(user:User)=>User = user=>user) {
     return this.transaction(async c => {
       // Lock identity until commit so revocation and writes have a defined ordering.
@@ -58,7 +81,7 @@ export class Store {
       for (const m of next.documentMetadata.filter(m => !base.documentMetadata.some(b => b.id===m.id))) {
         const match = /^\/api\/documents\/([0-9a-f-]{36})$/.exec(m.url);
         if (!match) throw new HttpError(400,'Unknown uploaded document');
-        const {rows:[doc]} = await c.query('SELECT * FROM mb_documents WHERE id=$1',[match[1]]);
+        const {rows:[doc]} = await c.query('SELECT * FROM mb_documents WHERE id=$1 AND deleted_at IS NULL',[match[1]]);
         if (!doc || doc.item_id!==m.itemId || doc.kind!==m.kind || doc.revision!==m.revision || doc.original_name!==m.name)
           throw new HttpError(400,'Document does not match upload');
         if (doc.uploaded_by!==actor.id) throw new HttpError(403,'Only uploader can attach this document');

@@ -145,6 +145,17 @@ export default function App({
       setBusy(false);
     }
   };
+  const deleteDocument = async(url:string):Promise<boolean>=>{
+    if(!snapshot||!writable||busy||conflict||!repository.deleteDocument) return false;
+    setBusy(true);setError('');setNotice('');
+    try {
+      const saved=await repository.deleteDocument(snapshot,url);
+      savedData.current=saved.data;setSnapshot(saved);return true;
+    } catch(e) {
+      if(e instanceof ConflictError) setConflict(e.current);
+      setError(e instanceof Error?e.message:String(e));return false;
+    } finally {setBusy(false);}
+  };
   const props: PageProps | null = snapshot
     ? {
         data: snapshot.data,
@@ -157,6 +168,7 @@ export default function App({
         openItem: (id) => navigate(2, id),
         save,
         getSavedData: () => savedData.current,
+        deleteDocument: repository.deleteDocument ? deleteDocument : undefined,
       }
     : null;
   return (

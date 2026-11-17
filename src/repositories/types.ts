@@ -8,6 +8,7 @@ export interface Repository {
   load(): Promise<Snapshot>;
   save(base: Snapshot, next: AppData): Promise<Snapshot>;
   canWrite(): Promise<boolean>;
+  deleteDocument?(base:Snapshot,url:string):Promise<Snapshot>;
   upload(
     itemId: string,
     file: File,

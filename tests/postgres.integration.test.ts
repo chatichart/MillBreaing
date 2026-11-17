@@ -121,6 +121,26 @@ describe('PostgreSQL + HTTP authorization and concurrency',()=>{
     await e.agent.put('/api/data').set('Origin',config.origin).set('X-CSRF-Token',e.csrf).send({token:base.token,data:next}).expect(200);
     await e.agent.get(uploaded.body.url).expect(200);
   });
+  it('deletes attachments only for editors with CSRF and the current project revision',async()=>{
+    const e=await login(editor),v=await login(viewer);
+    const uploaded=await e.agent.post('/api/documents').set('Origin',config.origin).set('X-CSRF-Token',e.csrf)
+      .field('itemId','L-001').field('kind','OTHER').field('revision','delete-test')
+      .attach('file',Buffer.from('%PDF-1.7\ndelete test\n%%EOF'),'delete-test.pdf').expect(201);
+    const base=await store.snapshot(),next=structuredClone(base.data);
+    const meta={id:randomUUID(),itemId:'L-001',kind:'OTHER' as const,revision:'delete-test',name:'delete-test.pdf',url:uploaded.body.url,uploadedAt:'',uploadedBy:''};
+    next.documentMetadata.push(meta);
+    const attached=(await e.agent.put('/api/data').set('Origin',config.origin).set('X-CSRF-Token',e.csrf).send({token:base.token,data:next}).expect(200)).body;
+    await v.agent.delete(uploaded.body.url).set('Origin',config.origin).set('X-CSRF-Token',v.csrf).send({token:attached.token}).expect(403);
+    await e.agent.delete(uploaded.body.url).send({token:attached.token}).expect(403);
+    await e.agent.delete(uploaded.body.url).set('Origin',config.origin).set('X-CSRF-Token',e.csrf).send({token:base.token}).expect(409);
+    await e.agent.get(uploaded.body.url).expect(200);
+    const removed=(await e.agent.delete(uploaded.body.url).set('Origin',config.origin).set('X-CSRF-Token',e.csrf).send({token:attached.token}).expect(200)).body;
+    expect(removed.data.documentMetadata.some((m:any)=>m.url===uploaded.body.url)).toBe(false);
+    expect(removed.data.auditEvents.some((a:any)=>a.action==='Document removed'&&a.by==='Editor')).toBe(true);
+    await e.agent.get(uploaded.body.url).expect(404);
+    const forged=structuredClone(removed.data);forged.documentMetadata.push(meta);
+    await e.agent.put('/api/data').set('Origin',config.origin).set('X-CSRF-Token',e.csrf).send({token:removed.token,data:forged}).expect(400);
+  });
   it('isolates public trial edits, blocks cross-origin writes, and has conflict protection',async()=>{
     await initializeDemo(store);const demo=demoApp({...config,demoMode:'editor'},store);
     const before=await store.snapshot();const base=(await request(demo).get('/api/data').expect(200)).body;
