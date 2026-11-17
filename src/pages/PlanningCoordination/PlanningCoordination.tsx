@@ -17,6 +17,7 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
   const [month, setMonth] = React.useState("");
   const [week, setWeek] = React.useState(0);
   const [view, setView] = React.useState("weekly");
+  const [selectedStatus, setSelectedStatus] = React.useState("");
   const [editing, setEditing] = React.useState<MeetingAction | null>(null);
   const [editingOriginal, setEditingOriginal] = React.useState<
     string | undefined
@@ -30,6 +31,15 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
   // their plan is in another month (or has no delivery date).
   const boardDate = (i: Item): string | null =>
     i.actual.deliveryDate || forecast(i);
+  const boardStatus = (i: Item): string => {
+    const s = status(i, p.data, p.asOf);
+    if (s !== "Delivered" && !/Waiting|Rework/.test(s) && delayDays(i, p.asOf) > 0)
+      return "At Risk / Delayed";
+    return ["Not Started", "Casting", "QC + Finishing"].includes(s)
+      ? "Planned / Expected" : s;
+  };
+  const matchesStatus = (i: Item): boolean => !selectedStatus ||
+    boardStatus(i) === (selectedStatus === "Delayed" ? "At Risk / Delayed" : selectedStatus);
   const months: string[] = [];
   const startMonth = p.asOf.slice(0, 7);
   const endMonth = `${Math.max(2027, Number(p.asOf.slice(0, 4)))}-12`;
@@ -44,8 +54,8 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
   }
   const inRange = (date: string | null): boolean =>
     !!date && months.includes(date.slice(0, 7));
-  const plannedThisMonth = p.items.filter((i) => inRange(forecast(i))).length;
-  const scope = p.items.filter((i) => inRange(boardDate(i)));
+  const plannedThisMonth = p.items.filter((i) => inRange(forecast(i)) && matchesStatus(i)).length;
+  const scope = p.items.filter((i) => inRange(boardDate(i)) && matchesStatus(i));
   const monthLabel = (value: string): string =>
     new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric", timeZone: "UTC" })
       .format(new Date(`${value}-01T00:00:00Z`));
@@ -233,11 +243,15 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
           </label>
         </div>
         <div className="mb-legend">
-          สีรายรายการ: <Badge value="Ready for Delivery" />
-          <Badge value="Planned / Expected" />
-          <Badge value="Waiting for Truck" />
-          <Badge value="Delayed" />
-          <Badge value="Delivered" />
+          สีรายรายการ:
+          <button className="mb-status-filter" aria-pressed={!selectedStatus} onClick={() => setSelectedStatus("")}>ทุกสถานะ</button>
+          {["Ready for Delivery", "Planned / Expected", "Waiting for Truck", "Delayed", "Delivered"].map(s => (
+            <button key={s} className="mb-status-filter" aria-label={`กรองสถานะ ${s}`}
+              aria-pressed={selectedStatus === s}
+              onClick={() => setSelectedStatus(selectedStatus === s ? "" : s)}>
+              <Badge value={s} />
+            </button>
+          ))}
         </div>
         {view === "weekly" ? (
           <div className="mb-table-scroll">
@@ -280,19 +294,7 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
                 {monthItems
                   .filter((i) => weekOf(boardDate(i)!) === w)
                   .map((i) => {
-                    let s = status(i, p.data, p.asOf);
-                    if (
-                      s !== "Delivered" &&
-                      !/Waiting|Rework/.test(s) &&
-                      delayDays(i, p.asOf) > 0
-                    )
-                      s = "At Risk / Delayed";
-                    else if (
-                      s === "Not Started" ||
-                      s === "Casting" ||
-                      s === "QC + Finishing"
-                    )
-                      s = "Planned / Expected";
+                    const s = boardStatus(i);
                     return (
                       <button
                         key={i.id}

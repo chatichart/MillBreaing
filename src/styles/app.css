@@ -602,6 +602,18 @@
 .mb-item-type-bottom { color: #7928a1; }
 .mb-item-type-al_cover { color: #194cc0; }
 .mb-item-type-unload { color: #15613b; }
+.mb-app .mb-status-filter {
+  padding: 3px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.mb-app .mb-status-filter[aria-pressed="true"] {
+  border-color: #2675db;
+  box-shadow: 0 0 0 1px #2675db;
+}
+.mb-status-filter .mb-badge { margin: 0; }
 .mb-week {
   background: #f4f7fb;
   border-radius: 6px;

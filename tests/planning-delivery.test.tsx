@@ -8,6 +8,36 @@ import { curve } from "../src/domain/rules";
 
 afterEach(cleanup);
 
+it("filters the board and totals by clickable status legend and toggles back to all", () => {
+  const data = emptyData();
+  const delivered = makeItem("delivered", "LOAD");
+  delivered.baseline.deliveryDate = "2026-12-17";
+  delivered.actual.deliveryDate = "2026-11-17";
+  const planned = makeItem("planned", "UNLOAD");
+  planned.baseline.deliveryDate = "2026-11-24";
+  const delayed = makeItem("late", "BOTTOM");
+  delayed.baseline.deliveryDate = "2026-11-10";
+  data.items = [delivered, planned, delayed];
+  render(<PlanningCoordination data={data} items={data.items} asOf="2026-11-17"
+    canWrite={true} busy={false} user="test" onDirty={vi.fn()} openItem={vi.fn()} save={vi.fn()} />);
+  const board = screen.getByRole("table", { name: "แผนส่งมอบรายเดือนและสัปดาห์" });
+  const deliveredFilter = screen.getByRole("button", { name: "กรองสถานะ Delivered" });
+  fireEvent.click(deliveredFilter);
+  expect(deliveredFilter.getAttribute("aria-pressed")).toBe("true");
+  expect(within(board).getByRole("button", { name: /delivered ✓ Delivered/ })).toBeTruthy();
+  expect(within(board).queryByRole("button", { name: /planned Planned/ })).toBeNull();
+  expect(within(board).getByRole("rowheader", { name: "รวมทั้งสิ้น 1 รายการ" })).toBeTruthy();
+  fireEvent.click(deliveredFilter);
+  expect(within(board).getByRole("rowheader", { name: "รวมทั้งสิ้น 3 รายการ" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "กรองสถานะ Planned / Expected" }));
+  expect(within(board).getByRole("button", { name: /planned Planned/ })).toBeTruthy();
+  expect(within(board).queryByRole("button", { name: /delivered ✓ Delivered/ })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "กรองสถานะ Delayed" }));
+  expect(within(board).getByRole("button", { name: /late At Risk \/ Delayed/ })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "ทุกสถานะ", exact: true }));
+  expect(within(board).getByRole("rowheader", { name: "รวมทั้งสิ้น 3 รายการ" })).toBeTruthy();
+});
+
 it("places a November 17 actual in W3 despite a later plan and counts the same delivery as S-Curve", () => {
   const data = emptyData();
   const delivered = makeItem("L1", "LOAD");
