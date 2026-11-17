@@ -212,22 +212,17 @@ export const dataSchema = baseDataSchema.superRefine((d, ctx) => {
     const ready =
       !!i.actual.finishingDate && !!i.actual.qcDate && i.qcStatus === "PASS";
     if (
-      (i.actual.readyDate || i.actual.deliveryDate || i.waitingForTruck) &&
+      !i.actual.deliveryDate && (i.actual.readyDate || i.waitingForTruck) &&
       !ready
     )
       issue(`${i.id}: ต้อง Finishing เสร็จและ QC Pass ก่อนจัดส่ง`);
     if (
-      i.actual.readyDate &&
+      !i.actual.deliveryDate && i.actual.readyDate &&
       d.settings.requireDocumentsForReady &&
       !hasDocs(i.id)
     )
       issue(`${i.id}: Required documents missing`);
-    if (
-      i.actual.deliveryDate &&
-      d.settings.requireDocumentsForDelivery &&
-      !hasDocs(i.id)
-    )
-      issue(`${i.id}: Required delivery documents missing`);
+    // Delivery Actual records an observed delivery independently of production/QC/documents.
     for (const group of [i.baseline, i.revised, i.actual]) {
       const sequence = [
         "castingDate",
@@ -263,7 +258,7 @@ export const dataSchema = baseDataSchema.superRefine((d, ctx) => {
       issue(`${p.id}: Pair type mismatch`);
   }
   for (const i of d.items) {
-    if (!(i.waitingForTruck || i.actual.deliveryDate)) continue;
+    if (!i.waitingForTruck || i.actual.deliveryDate) continue;
     const group = new Set([i.id]);
     let changed = true;
     while (changed) {

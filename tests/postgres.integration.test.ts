@@ -141,6 +141,15 @@ describe('PostgreSQL + HTTP authorization and concurrency',()=>{
     const forged=structuredClone(removed.data);forged.documentMetadata.push(meta);
     await e.agent.put('/api/data').set('Origin',config.origin).set('X-CSRF-Token',e.csrf).send({token:removed.token,data:forged}).expect(400);
   });
+  it('persists delivery actual without manufacturing prerequisites through the API',async()=>{
+    const e=await login(editor),base=await store.snapshot(),next=structuredClone(base.data);
+    const item=next.items.find(i=>i.id==='U-001')!;
+    item.actual.deliveryDate='2026-11-17';
+    expect(item.actual.finishingDate).toBeNull();expect(item.actual.qcDate).toBeNull();
+    const saved=(await e.agent.put('/api/data').set('Origin',config.origin).set('X-CSRF-Token',e.csrf).send({token:base.token,data:next}).expect(200)).body;
+    expect(saved.data.items.find((i:any)=>i.id===item.id).actual.deliveryDate).toBe('2026-11-17');
+    expect((await store.snapshot()).data.items.find(i=>i.id===item.id)!.actual.qcDate).toBeNull();
+  });
   it('isolates public trial edits, blocks cross-origin writes, and has conflict protection',async()=>{
     await initializeDemo(store);const demo=demoApp({...config,demoMode:'editor'},store);
     const before=await store.snapshot();const base=(await request(demo).get('/api/data').expect(200)).body;

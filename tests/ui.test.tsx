@@ -190,3 +190,15 @@ it("requires confirmation before removing an uploaded PDF", async () => {
   expect(repo.deleteDocument).toHaveBeenCalledOnce();
   expect(screen.queryByRole('button',{name:'ลบไฟล์ ลบทดสอบ.pdf'})).toBeNull();confirm.mockRestore();
 });
+
+it("saves Delivery Actual directly without filling production or QC steps",async()=>{
+  const repo=repository(),save=vi.spyOn(repo,'save');
+  render(<App repository={repo} user="buyer"/>);
+  await screen.findByText('Delivery S-Curve');fireEvent.click(screen.getByRole('button',{name:/Supplier Tracking/}));fireEvent.click(screen.getByRole('button',{name:'L-001'}));
+  fireEvent.change(screen.getByLabelText('Delivery Actual'),{target:{value:'17/11/2026'}});
+  fireEvent.click(screen.getByRole('button',{name:'Save Update',exact:true}));
+  await screen.findByText('SharePoint ยืนยันการบันทึกแล้ว');
+  const next=save.mock.calls[0][1];expect(next.items[0].actual.deliveryDate).toBe('2026-11-17');
+  expect(next.items[0].actual.finishingDate).toBeNull();expect(next.items[0].actual.qcDate).toBeNull();
+  expect(next.deliveryRecords.some(r=>r.itemId==='L-001'&&r.date==='2026-11-17')).toBe(true);
+});

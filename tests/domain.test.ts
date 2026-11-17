@@ -23,12 +23,12 @@ describe("Purchasing business rules", () => {
     expect(metrics(d, d.items, "2026-11-16").delivered).toBe(0);
     expect(curve(d, d.items, "monthly", "2026-11-16")[0].actual).toBe(0);
   });
-  it("requires readiness for Actual and rejects contradictory QC", () => {
+  it("records Actual delivery independently of manufacturing and QC status", () => {
     const d = emptyData();
     const i = makeItem("L-001", "LOAD");
     d.items.push(i);
     i.actual.deliveryDate = "2026-11-01";
-    expect(dataSchema.safeParse(d).success).toBe(false);
+    expect(dataSchema.safeParse(d).success).toBe(true);
     i.actual.finishingDate = "2026-10-30";
     i.actual.qcDate = "2026-10-30";
     i.qcStatus = "PASS";
@@ -42,7 +42,7 @@ describe("Purchasing business rules", () => {
     expect(dataSchema.safeParse(d).success).toBe(true);
     expect(status(i, d, "2026-11-16")).toBe("Delivered");
     i.qcStatus = "FAIL";
-    expect(dataSchema.safeParse(d).success).toBe(false);
+    expect(dataSchema.safeParse(d).success).toBe(true);
   });
   it("checks all explicitly defined pairing dependencies", () => {
     const d = emptyData();

@@ -9,7 +9,7 @@ it("excludes undated items from both sides of baseline S-Curve denominator", () 
   d.items[0].baseline.deliveryDate = "2026-11-01";
   expect(curve(d, d.items, "monthly", "2026-11-16")[0].planned).toBe(100);
 });
-it("rejects shipment while any configured pairing dependency is unready", () => {
+it("rejects waiting for truck while a configured pairing dependency is unready", () => {
   const d = emptyData();
   const load = makeItem("L-001", "LOAD"),
     bottom = makeItem("B-001", "BOTTOM");
@@ -23,7 +23,8 @@ it("rejects shipment while any configured pairing dependency is unready", () => 
   load.actual.finishingDate = "2026-11-01";
   load.actual.qcDate = "2026-11-01";
   load.qcStatus = "PASS";
-  load.actual.deliveryDate = "2026-11-02";
+  load.actual.readyDate = "2026-11-02";
+  load.waitingForTruck = true;
   expect(dataSchema.safeParse(d).success).toBe(false);
 });
 it("requires explicit reason for baseline revision", () => {
@@ -67,4 +68,16 @@ it("rejects non-row import objects rather than crashing or accepting unknown act
 });
 it("escapes CSV formulas and embedded quotes", () => {
   expect(csvCell(' =HYPERLINK("x")')).toBe('"\' =HYPERLINK(""x"")"');
+});
+
+it("records delivery actual without production, QC, documents or ready paired components",()=>{
+  const d=emptyData(),load=makeItem('L-001','LOAD'),bottom=makeItem('B-001','BOTTOM');
+  d.items.push(load,bottom);d.pairings.push({id:'pair',loadId:load.id,matchingId:bottom.id,type:'LOAD_BOTTOM'});
+  d.settings.requireDocumentsForReady=true;d.settings.requireDocumentsForDelivery=true;
+  load.actual.deliveryDate='2026-11-17';
+  expect(dataSchema.safeParse(d).success).toBe(true);
+  expect(load.actual.finishingDate).toBeNull();expect(load.actual.qcDate).toBeNull();
+  // Previously entered ready date must not reintroduce delivery prerequisites.
+  load.actual.readyDate='2026-11-16';
+  expect(dataSchema.safeParse(d).success).toBe(true);
 });
