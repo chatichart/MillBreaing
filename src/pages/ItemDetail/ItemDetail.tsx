@@ -38,11 +38,18 @@ export default function ItemDetail(
   const [revision, setRevision] = React.useState("1");
   const [file, setFile] = React.useState<File | null>(null);
   const [uploading, setUploading] = React.useState(false);
+  const fileInput = React.useRef<HTMLInputElement>(null);
+  const fileInputId = React.useId();
+  const uploadHintId = React.useId();
+  const [uploadMessage, setUploadMessage] = React.useState<{text:string;error:boolean}|null>(null);
   React.useEffect(() => {
     setDraft(source ? JSON.parse(JSON.stringify(source)) : undefined);
     setOriginal(JSON.stringify(source));
     setFeedback("");
     setError("");
+    setFile(null);
+    setUploadMessage(null);
+    if(fileInput.current) fileInput.current.value='';
   }, [p.itemId]);
   const dirty = !!draft && (JSON.stringify(draft) !== original || !!feedback);
   React.useEffect(() => {
@@ -161,18 +168,18 @@ export default function ItemDetail(
     }
   };
   const upload = async (): Promise<void> => {
-    if (!file) return;
+    if (!file || disabled || dirty || !revision.trim() || p.repository.mode==='demo') return;
     setUploading(true);
-    setError("");
+    setUploadMessage(null);
     let uploaded = "";
     try {
-      uploaded = await p.repository.upload(i.id, file, docKind, revision);
+      uploaded = await p.repository.upload(i.id, file, docKind, revision.trim());
       const d = JSON.parse(JSON.stringify(p.data));
       const meta = {
         id: crypto.randomUUID(),
         itemId: i.id,
         kind: docKind,
-        revision,
+        revision:revision.trim(),
         name: file.name,
         url: uploaded,
         uploadedAt: new Date().toISOString(),
@@ -189,14 +196,14 @@ export default function ItemDetail(
         after: JSON.stringify(meta),
       });
       if (!(await p.save(d)))
-        setError(
-          `PDF uploaded at ${uploaded}, metadata was NOT saved. Retain path for administrator reconciliation; do not assume attachment succeeded.`,
-        );
-      else setFile(null);
+        setUploadMessage({error:true,text:`อัปโหลดไฟล์แล้ว แต่บันทึกข้อมูลแนบไม่สำเร็จ กรุณาติดต่อผู้ดูแลพร้อมเส้นทาง ${uploaded}`});
+      else {
+        setFile(null);
+        if(fileInput.current) fileInput.current.value='';
+        setUploadMessage({error:false,text:'อัปโหลดและบันทึกเอกสารเรียบร้อยแล้ว'});
+      }
     } catch (e) {
-      setError(
-        `${String(e)}${uploaded ? ` • Uploaded file retained at ${uploaded}; metadata recovery needed` : ""}`,
-      );
+      setUploadMessage({error:true,text:`${e instanceof Error?e.message:String(e)}${uploaded?` • ไฟล์อยู่ที่ ${uploaded} แต่ข้อมูลแนบยังไม่สมบูรณ์ กรุณาติดต่อผู้ดูแล`:''}`});
     } finally {
       setUploading(false);
     }
@@ -551,24 +558,37 @@ export default function ItemDetail(
               onChange={(e) => setRevision(e.target.value)}
             />
           </label>
-          <label>
-            PDF
-            <input
-              type="file"
-              accept="application/pdf,.pdf"
-              disabled={disabled}
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-            />
-          </label>
+          <div className="mb-file-picker">
+            <label htmlFor={fileInputId}>PDF</label>
+            <input id={fileInputId} ref={fileInput} className="mb-file-input" type="file"
+              accept="application/pdf,.pdf" disabled={disabled || p.repository.mode==='demo'}
+              onChange={(e)=>{
+                const selected=e.target.files?.[0]||null;
+                setUploadMessage(null);
+                if(selected && (!/\.pdf$/i.test(selected.name) || selected.size>20*1024*1024 || selected.size===0)){
+                  setFile(null);e.target.value='';
+                  setUploadMessage({error:true,text:'กรุณาเลือกไฟล์ PDF ขนาดไม่เกิน 20 MB'});
+                } else setFile(selected);
+              }} />
+            <div className="mb-file-selection">
+              <button type="button" disabled={disabled || p.repository.mode==='demo'} onClick={()=>fileInput.current?.click()}>
+                {file?'เปลี่ยนไฟล์ PDF':'เลือกไฟล์ PDF'}
+              </button>
+              <span>{file?`${file.name} • ${(file.size/1024/1024).toFixed(2)} MB`:'ยังไม่ได้เลือกไฟล์'}</span>
+            </div>
+          </div>
         </div>
-        <button
-          disabled={disabled || dirty || !file || p.repository.mode === "demo"}
-          onClick={() => {
-            void upload();
-          }}
-        >
-          Upload PDF Revision
-        </button>
+        <div className="mb-upload-actions">
+          <button className="primary" type="button" aria-describedby={uploadHintId}
+            disabled={disabled || dirty || !file || !revision.trim() || p.repository.mode==='demo'}
+            onClick={()=>{void upload();}}>
+            {uploading?'กำลังอัปโหลด…':'อัปโหลดไฟล์ PDF'}
+          </button>
+          <span id={uploadHintId}>
+            {p.repository.mode==='demo'?'โหมดทดลองยังไม่เปิดอัปโหลดเอกสาร':!p.canWrite?'ต้องมีสิทธิ์ Editor จึงจะอัปโหลดได้':uploading?'กรุณารอจนบันทึกเอกสารเสร็จ':p.busy?'กำลังดำเนินการ กรุณารอสักครู่':dirty?'กรุณากด Save Update ก่อนอัปโหลดเอกสาร':!file?'เลือกไฟล์ PDF ก่อนอัปโหลด':!revision.trim()?'กรุณาระบุ Revision':'พร้อมอัปโหลด • ไฟล์จะแนบกับ '+i.id}
+          </span>
+        </div>
+        {uploadMessage&&<div role={uploadMessage.error?'alert':'status'} className={uploadMessage.error?'mb-error':'mb-success'}>{uploadMessage.text}</div>}
         <table>
           <thead>
             <tr>

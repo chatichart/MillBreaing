@@ -769,3 +769,13 @@
   .mb-pending-account { align-items: flex-start; flex-wrap: wrap; }
   .mb-main .mb-access { padding: 16px; }
 }
+
+.mb-file-picker { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.mb-file-picker > label { color: #64748b; font-size: 12px; }
+.mb-file-selection { display: flex; align-items: center; gap: 12px; padding: 7px 10px; min-height: 42px; border: 1px dashed #9db8d7; background: #f7faff; border-radius: 6px; }
+.mb-file-selection button { flex-shrink: 0; border-color: #216ac9; color: #216ac9; }
+.mb-file-selection span { min-width: 0; overflow-wrap: anywhere; color: #64748b; font-size: 12px; }
+.mb-file-input { position: absolute; width: 1px !important; height: 1px; padding: 0 !important; overflow: hidden; clip-path: inset(50%); }
+.mb-upload-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.mb-upload-actions span { color: #64748b; font-size: 12px; }
+.mb-upload-actions button { min-height: 42px; }

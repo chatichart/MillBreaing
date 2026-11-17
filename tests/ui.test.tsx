@@ -151,3 +151,26 @@ it("opens access management from the sidebar and returns to project pages", asyn
   expect(screen.getByRole('heading',{name:'Dashboard',level:1})).toBeTruthy();
   expect(screen.queryByText('รายการคำขอทดสอบ')).toBeNull();
 });
+
+it("guides PDF selection and uploads the selected document revision", async () => {
+  const repo=repository();
+  const upload=vi.spyOn(repo,'upload');
+  render(<App repository={repo} user="buyer" />);
+  await screen.findByText('Delivery S-Curve');
+  fireEvent.click(screen.getByRole('button',{name:/Supplier Tracking/}));
+  fireEvent.click(screen.getByRole('button',{name:'L-001'}));
+  const button=screen.getByRole('button',{name:'อัปโหลดไฟล์ PDF'});
+  expect((button as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByText('เลือกไฟล์ PDF ก่อนอัปโหลด')).toBeTruthy();
+  const input=screen.getByLabelText('PDF');
+  fireEvent.change(input,{target:{files:[new File(['bad'],'bad.txt',{type:'text/plain'})]}});
+  expect(screen.getByText('กรุณาเลือกไฟล์ PDF ขนาดไม่เกิน 20 MB')).toBeTruthy();
+  expect(upload).not.toHaveBeenCalled();
+  fireEvent.change(input,{target:{files:[new File(['%PDF-1.7 test'],'certificate.pdf',{type:'application/pdf'})]}});
+  expect((button as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(button);
+  await screen.findByText('อัปโหลดและบันทึกเอกสารเรียบร้อยแล้ว');
+  expect(upload).toHaveBeenCalledWith('L-001',expect.objectContaining({name:'certificate.pdf'}),'MATERIAL_CERT','1');
+  expect(screen.getByRole('link',{name:'View PDF'})).toBeTruthy();
+  expect((button as HTMLButtonElement).disabled).toBe(true);
+});
