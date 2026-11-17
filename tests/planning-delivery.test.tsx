@@ -24,7 +24,7 @@ it("places a November 17 actual in W3 despite a later plan and counts the same d
     canWrite={true} busy={false} user="test" onDirty={vi.fn()} openItem={openItem} save={vi.fn()} />);
   fireEvent.change(screen.getByLabelText("เดือน"), { target: { value: "2026-11" } });
 
-  const w3 = screen.getByRole("button", { name: "W3 15–21" }).closest("section")!;
+  const w3 = screen.getByRole("button", { name: "W3 15–21" }).closest("td")!;
   const card = within(w3).getByRole("button", { name: /L1 ✓ Delivered \(Actual 17\/11\/69\)/ });
   fireEvent.click(card);
   expect(openItem).toHaveBeenCalledWith("L1");
@@ -55,7 +55,7 @@ it("keeps undelivered items on their plan dates and excludes deliveries from ano
   render(<PlanningCoordination data={data} items={data.items} asOf="2026-11-17"
     canWrite={true} busy={false} user="test" onDirty={vi.fn()} openItem={vi.fn()} save={vi.fn()} />);
   fireEvent.change(screen.getByLabelText("เดือน"), { target: { value: "2026-11" } });
-  const w4 = screen.getByRole("button", { name: "W4 22–28" }).closest("section")!;
+  const w4 = screen.getByRole("button", { name: "W4 22–28" }).closest("td")!;
   expect(within(w4).getByRole("button", { name: /planned.*24\/11\/2026/ })).toBeTruthy();
   expect(screen.queryByRole("button", { name: /previous ✓ Delivered/ })).toBeNull();
   expect(screen.getByText("Actual Delivered").parentElement!.textContent).toBe("Actual Delivered0");
@@ -71,14 +71,16 @@ it("shows every month through December 2570 by default and collapses to a select
   data.items = [last, outside];
   render(<PlanningCoordination data={data} items={data.items} asOf="2026-11-17"
     canWrite={true} busy={false} user="test" onDirty={vi.fn()} openItem={vi.fn()} save={vi.fn()} />);
-  expect(screen.getAllByRole("heading", { level: 3 }).length).toBe(14);
-  expect(screen.getByRole("heading", { name: "พฤศจิกายน 2569" })).toBeTruthy();
-  expect(screen.getByRole("heading", { name: "ธันวาคม 2570" })).toBeTruthy();
+  expect(within(screen.getByRole("table", { name: "แผนส่งมอบรายเดือนและสัปดาห์" })).getAllByRole("rowgroup")[1].querySelectorAll("tr").length).toBe(14);
+  expect(screen.getByRole("rowheader", { name: /พฤศจิกายน 2569/ })).toBeTruthy();
+  expect(screen.getByRole("rowheader", { name: /ธันวาคม 2570/ })).toBeTruthy();
+  const decemberRow = screen.getByRole("rowheader", { name: /ธันวาคม 2570/ }).closest("tr")!;
+  expect(within(decemberRow).getAllByRole("cell").slice(-4).map(cell => cell.textContent)).toEqual(["1", "0", "0", "0"]);
   expect(screen.getByRole("button", { name: /December-end.*31\/12\/2027/ })).toBeTruthy();
   expect(screen.queryByRole("button", { name: /outside.*01\/01\/2028/ })).toBeNull();
   fireEvent.change(screen.getByLabelText("เดือน"), { target: { value: "2027-12" } });
-  expect(screen.getAllByRole("heading", { level: 3 }).length).toBe(1);
+  expect(within(screen.getByRole("table", { name: "แผนส่งมอบรายเดือนและสัปดาห์" })).getAllByRole("rowgroup")[1].querySelectorAll("tr").length).toBe(1);
   expect(screen.getAllByRole("button", { name: /^W[1-5] / }).length).toBe(5);
-  fireEvent.change(screen.getByLabelText("เดือน"), { target: { value: "" } });
-  expect(screen.getAllByRole("heading", { level: 3 }).length).toBe(14);
+  fireEvent.click(screen.getByRole("button", { name: "แสดงทุกเดือน" }));
+  expect(within(screen.getByRole("table", { name: "แผนส่งมอบรายเดือนและสัปดาห์" })).getAllByRole("rowgroup")[1].querySelectorAll("tr").length).toBe(14);
 });

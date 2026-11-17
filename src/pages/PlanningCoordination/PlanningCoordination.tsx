@@ -1,7 +1,7 @@
 import DateInput from "../../components/DateInput";
 import * as React from "react";
 import { PageProps, Badge, Empty, Kpis } from "../../components/Common";
-import { Item, MeetingAction } from "../../models/schema";
+import { Item, MeetingAction, itemTypes, typeLabels } from "../../models/schema";
 import {
   confirmed,
   delayDays,
@@ -240,13 +240,28 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
           <Badge value="Delivered" />
         </div>
         {view === "weekly" ? (
-          <div>
-            {months.map((boardMonth) => (
-            <section className="mb-board-month" key={boardMonth}>
-              <h3>{monthLabel(boardMonth)}</h3>
-              <div className="mb-board">
+          <div className="mb-table-scroll">
+            <table className="mb-monthly-board" aria-label="แผนส่งมอบรายเดือนและสัปดาห์">
+              <thead>
+                <tr>
+                  <th scope="col">เดือน / สัปดาห์</th>
+                  {[1, 2, 3, 4, 5].map(w => (
+                    <th scope="col" key={w}>W{w} | {(w - 1) * 7 + 1}–{w === 5 ? "สิ้นเดือน" : w * 7}</th>
+                  ))}
+                  {itemTypes.map(type => <th scope="col" key={type}>{typeLabels[type]}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+            {months.map((boardMonth) => {
+              const monthItems = scope.filter(i => boardDate(i)!.startsWith(boardMonth));
+              return (
+            <tr key={boardMonth}>
+              <th scope="row">
+                {monthLabel(boardMonth)}
+                <small>รวม {monthItems.length} รายการ</small>
+              </th>
             {[1, 2, 3, 4, 5].map((w) => (
-              <section
+              <td
                 className={`mb-week ${month === boardMonth && week === w ? "selected" : ""}`}
                 key={w}
               >
@@ -262,8 +277,8 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
                     {(w - 1) * 7 + 1}–{w === 5 ? "End" : w * 7}
                   </small>
                 </button>
-                {scope
-                  .filter((i) => boardDate(i)!.startsWith(boardMonth) && weekOf(boardDate(i)!) === w)
+                {monthItems
+                  .filter((i) => weekOf(boardDate(i)!) === w)
                   .map((i) => {
                     let s = status(i, p.data, p.asOf);
                     if (
@@ -284,7 +299,7 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
                         className={`mb-board-card ${tone(s)}`}
                         onClick={() => p.openItem(i.id)}
                       >
-                        <strong>{i.id}</strong>
+                        <strong className={`mb-item-type-${i.itemType.toLowerCase()}`}>{i.id}</strong>
                         <span>{s === "Delivered" ? "✓ Delivered" : s}</span>
                         <small>{i.actual.deliveryDate
                           ? `(Actual ${actualLabel(i.actual.deliveryDate)})`
@@ -292,14 +307,26 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
                       </button>
                     );
                   })}
-                {!scope.some((i) => boardDate(i)!.startsWith(boardMonth) && weekOf(boardDate(i)!) === w) && (
+                {!monthItems.some((i) => weekOf(boardDate(i)!) === w) && (
                   <div className="mb-no-items">No Items</div>
                 )}
-              </section>
+              </td>
             ))}
-              </div>
-            </section>
-            ))}
+              {itemTypes.map(type => (
+                <td className="mb-board-total" key={type}>{monthItems.filter(i => i.itemType === type).length}</td>
+              ))}
+            </tr>
+              );
+            })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row">รวมทั้งสิ้น {scope.length} รายการ</th>
+                  {[1, 2, 3, 4, 5].map(w => <td className="mb-board-total" key={w}>{scope.filter(i => weekOf(boardDate(i)!) === w).length}</td>)}
+                  {itemTypes.map(type => <td className="mb-board-total" key={type}>{scope.filter(i => i.itemType === type).length}</td>)}
+                </tr>
+              </tfoot>
+            </table>
           </div>
         ) : (
           itemTable(visible)
