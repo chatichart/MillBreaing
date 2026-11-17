@@ -24,11 +24,30 @@ it("counts monthly plans independently of actual deliveries, including when the 
   const november = screen.getByRole("rowheader", { name: /พฤศจิกายน 2569/ }).closest("tr")!;
   const december = screen.getByRole("rowheader", { name: /ธันวาคม 2569/ }).closest("tr")!;
   expect(within(november).getAllByRole("cell")[5].textContent).toBe("แผน0ส่งจริง1");
+  expect(within(november).getByText("ส่งก่อนแผน 30 วัน")).toBeTruthy();
   expect(within(december).getAllByRole("cell")[5].textContent).toBe("แผน2ส่งจริง0");
   expect(within(december).getAllByRole("cell")[8].textContent).toBe("แผน1ส่งจริง0");
   fireEvent.change(screen.getByLabelText("เดือน"), { target: { value: "2026-12" } });
   const footer = screen.getByRole("table", { name: "แผนส่งมอบรายเดือนและสัปดาห์" }).querySelector("tfoot")!;
   expect(within(footer).getAllByRole("cell")[5].textContent).toBe("แผน2ส่งจริง0");
+});
+
+it.each([
+  ["2026-11-14", "ส่งช้ากว่าแผน 3 วัน"],
+  ["2026-11-17", "ส่งตรงแผน"],
+  [null, null],
+])("shows delivery timing against original plan %s", (plan, expected) => {
+  const data = emptyData();
+  const item = makeItem("timing", "LOAD");
+  item.baseline.deliveryDate = plan;
+  item.revisedDeliveryDate = "2026-12-01";
+  item.actual.deliveryDate = "2026-11-17";
+  data.items = [item];
+  render(<PlanningCoordination data={data} items={data.items} asOf="2026-11-17"
+    canWrite={true} busy={false} user="test" onDirty={vi.fn()} openItem={vi.fn()} save={vi.fn()} />);
+  const card = screen.getByRole("button", { name: /timing ✓ Delivered/ });
+  if (expected) expect(within(card).getByText(expected)).toBeTruthy();
+  else expect(within(card).queryByText(/ส่งก่อนแผน|ส่งช้ากว่าแผน|ส่งตรงแผน/)).toBeNull();
 });
 
 it("filters the board and totals by clickable status legend and toggles back to all", () => {

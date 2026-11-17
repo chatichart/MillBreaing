@@ -630,6 +630,9 @@
   column-gap: 3px;
 }
 .mb-delivery-counts b { font-size: 13px; }
+.mb-app .mb-board-card .mb-delivery-timing { font-weight: 650; }
+.mb-app .mb-board-card .mb-delivery-late { color: #b42318; }
+.mb-app .mb-board-card .mb-delivery-on-time { color: #15613b; }
 .mb-item-type-load { color: #b42318; }
 .mb-item-type-bottom { color: #7928a1; }
 .mb-item-type-al_cover { color: #194cc0; }

@@ -307,6 +307,9 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
                   .filter((i) => weekOf(boardDate(i)!) === w)
                   .map((i) => {
                     const s = boardStatus(i);
+                    const deliveryDelta = i.actual.deliveryDate && i.baseline.deliveryDate
+                      ? Math.round((Date.parse(i.actual.deliveryDate) - Date.parse(i.baseline.deliveryDate)) / 86400000)
+                      : null;
                     return (
                       <button
                         key={i.id}
@@ -318,6 +321,12 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
                         <small>{i.actual.deliveryDate
                           ? `Plan ${i.baseline.deliveryDate ? actualLabel(i.baseline.deliveryDate) : "—"} (Actual ${actualLabel(i.actual.deliveryDate)})`
                           : thaiDate(boardDate(i))}</small>
+                        {deliveryDelta !== null && (
+                          <small className={`mb-delivery-timing ${deliveryDelta > 0 ? "mb-delivery-late" : "mb-delivery-on-time"}`}>
+                            {deliveryDelta < 0 ? `ส่งก่อนแผน ${Math.abs(deliveryDelta)} วัน`
+                              : deliveryDelta > 0 ? `ส่งช้ากว่าแผน ${deliveryDelta} วัน` : "ส่งตรงแผน"}
+                          </small>
+                        )}
                       </button>
                     );
                   })}
