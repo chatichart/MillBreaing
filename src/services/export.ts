@@ -1,5 +1,5 @@
 import { AppData, Item } from "../models/schema";
-import { pairReady, status, forecast, thaiDate } from "../domain/rules";
+import { pairReady, status, updateDeliveryPlan, confirmed, thaiDate } from "../domain/rules";
 export function csvCell(value: unknown): string {
   let s = String(value ?? "");
   if (/^[\s]*[=+@-]/.test(s)) s = "'" + s;
@@ -12,6 +12,7 @@ export function reportCsv(d: AppData, items: Item[], date: string): string {
       "Item ID",
       "Supplier",
       "Delivery Plan",
+      "Update Delivery Plan",
       "Delivery Actual",
       "Current Status",
       "Pairing Status",
@@ -22,8 +23,9 @@ export function reportCsv(d: AppData, items: Item[], date: string): string {
       thaiDate(date),
       i.id,
       d.suppliers.find((s) => s.id === i.supplierId)?.name,
-      thaiDate(forecast(i)),
-      thaiDate(i.actual.deliveryDate),
+      thaiDate(i.baseline.deliveryDate),
+      thaiDate(updateDeliveryPlan(i,date)),
+      thaiDate(confirmed(i,d,date) ? i.actual.deliveryDate : null),
       status(i, d, date),
       pairReady(i, d) ? "Ready" : "Waiting",
       i.delayReason,

@@ -5,6 +5,10 @@ import { validateChange } from '../server/policy';
 import { readConfig } from '../server/config';
 
 describe('standalone server safety', () => {
+  it('rejects future delivery Actual and directs editor to Update Delivery Plan',()=>{
+    const base=initialData(),next=structuredClone(base);next.items[0].actual.deliveryDate='2099-11-27';
+    expect(()=>validateChange(base,next,'editor')).toThrow(/Update Delivery Plan/);
+  });
   it('fails closed without production identity and session configuration', () => {
     expect(() => readConfig({ NODE_ENV: 'production' })).toThrow();
   });

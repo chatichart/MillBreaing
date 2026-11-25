@@ -12,11 +12,14 @@ export const days = (a: string, b: string): number =>
   Math.max(0, Math.floor((Date.parse(b) - Date.parse(a)) / 86400000));
 export const weekOf = (s: string): number =>
   Math.min(5, Math.ceil(Number(s.slice(8, 10)) / 7));
-export const forecast = (i: Item): string | null =>
-  i.revisedDeliveryDate || i.baseline.deliveryDate;
+export const updateDeliveryPlan = (i: Item, asOf = today()): string | null =>
+  i.actual.deliveryDate && i.actual.deliveryDate <= asOf ? null :
+    i.revisedDeliveryDate || (i.actual.deliveryDate && i.actual.deliveryDate > asOf ? i.actual.deliveryDate : null);
+export const forecast = (i: Item, asOf = today()): string | null =>
+  updateDeliveryPlan(i, asOf) || i.baseline.deliveryDate;
 // Purchasing's explicit Actual date is the delivery confirmation; no extra delivery form.
-export const confirmed = (i: Item, _d: AppData): boolean =>
-  !!i.actual.deliveryDate;
+export const confirmed = (i: Item, _d: AppData, asOf = today()): boolean =>
+  !!i.actual.deliveryDate && i.actual.deliveryDate <= asOf;
 export const documentsComplete = (i: Item, d: AppData): boolean =>
   ["MATERIAL_CERT", "QC_DIMENSION"].every((k) =>
     d.documentMetadata.some((m) => m.itemId === i.id && m.kind === k),
@@ -48,12 +51,12 @@ export const delayDays = (i: Item, asOf: string): number =>
   i.baseline.deliveryDate
     ? days(
         i.baseline.deliveryDate,
-        i.actual.deliveryDate || [forecast(i) || "", asOf].sort().pop()!,
+        (i.actual.deliveryDate && i.actual.deliveryDate <= asOf ? i.actual.deliveryDate : null) || [forecast(i,asOf) || "", asOf].sort().pop()!,
       )
     : 0;
 export const waitingDays = (i: Item, asOf: string): number =>
   i.actual.readyDate
-    ? days(i.actual.readyDate, i.actual.deliveryDate || asOf)
+    ? days(i.actual.readyDate, i.actual.deliveryDate && i.actual.deliveryDate<=asOf ? i.actual.deliveryDate : asOf)
     : 0;
 export const statuses = [
   "Not Started",
@@ -65,10 +68,11 @@ export const statuses = [
   "Ready for Delivery",
   "Waiting for Truck",
   "Delivered",
+  "Updated Plan",
   "Delayed",
 ] as const;
 export function status(i: Item, d: AppData, asOf: string): string {
-  if (confirmed(i, d)) return "Delivered";
+  if (confirmed(i, d, asOf)) return "Delivered";
   if (i.qcStatus === "FAIL" || i.qcStatus === "REWORK")
     return "QC Failed / Rework";
   if (ownReady(i, d)) {
@@ -77,6 +81,7 @@ export function status(i: Item, d: AppData, asOf: string): string {
       return i.waitingForTruck ? "Waiting for Truck" : "Ready for Delivery";
     return "Production Completed";
   }
+  if (updateDeliveryPlan(i, asOf)) return "Updated Plan";
   if (i.baseline.deliveryDate && i.baseline.deliveryDate < asOf)
     return "Delayed";
   if (i.actual.castingDate) return "QC + Finishing";
@@ -118,7 +123,7 @@ export function filterItems(d: AppData, f: Filters, asOf: string): Item[] {
         (!!i.baseline.deliveryDate && i.baseline.deliveryDate >= f.from)) &&
       (!f.to ||
         (!!i.baseline.deliveryDate && i.baseline.deliveryDate <= f.to)) &&
-      (!f.delayed || (delayDays(i, asOf) > 0 && !confirmed(i, d))),
+      (!f.delayed || (delayDays(i, asOf) > 0 && !confirmed(i, d, asOf))),
   );
 }
 export interface Metrics {
@@ -138,7 +143,7 @@ export function metrics(d: AppData, items: Item[], asOf: string): Metrics {
     (i) => i.baseline.deliveryDate && i.baseline.deliveryDate <= asOf,
   ).length;
   const delivered = items.filter(
-    (i) => confirmed(i, d) && i.actual.deliveryDate! <= asOf,
+    (i) => confirmed(i, d, asOf),
   ).length;
   const count = (s: string): number =>
     items.filter((i) => status(i, d, asOf) === s).length;
@@ -151,14 +156,14 @@ export function metrics(d: AppData, items: Item[], asOf: string): Metrics {
     ready: count("Ready for Delivery"),
     waitingPair: count("Waiting for Pair"),
     waitingTruck: count("Waiting for Truck"),
-    delayed: items.filter((i) => delayDays(i, asOf) > 0 && !confirmed(i, d))
+    delayed: items.filter((i) => delayDays(i, asOf) > 0 && !confirmed(i, d, asOf))
       .length,
     pairs: d.pairings.filter(
       (p) =>
         items.some((i) => i.id === p.loadId) &&
         [p.loadId, p.matchingId].every((id) => {
           const i = d.items.find((x) => x.id === id);
-          return i && confirmed(i, d);
+          return i && confirmed(i, d, asOf);
         }),
     ).length,
   };
@@ -189,7 +194,7 @@ export function curve(
       const cutoff = `${month}-${String(day).padStart(2, "0")}`;
       const effective = cutoff > asOf ? asOf : cutoff;
       const actual = items.filter(
-        (i) => confirmed(i, d) && i.actual.deliveryDate! <= effective,
+        (i) => confirmed(i, d, asOf) && i.actual.deliveryDate! <= effective,
       ).length;
       result.push({
         label:

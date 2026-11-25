@@ -5,6 +5,7 @@ import { Store } from './store';
 import { createApp } from './app';
 import { entraProvider } from './oidc';
 import { initializeDemo, demoApp } from './demo';
+import {runDeliveryMigration} from './deliveryMigration';
 const config=readConfig();
 const pool=new Pool({connectionString:config.databaseUrl,max:10,connectionTimeoutMillis:10000,
   ssl:config.dbSsl?{rejectUnauthorized:true}:undefined});
@@ -16,6 +17,7 @@ if(config.demoMode==='off') await store.transaction(async c=>{
   await c.query('INSERT INTO mb_projects(id,data) VALUES($1,$2) ON CONFLICT DO NOTHING', ['MILL-BEARING',(await import('../src/domain/initialItems')).initialData()]);
 });
 if(config.demoMode!=='off') await initializeDemo(store);
+await runDeliveryMigration(store,config.demoMode==='off'?'mb_projects':'mb_demo_projects');
 const app=config.demoMode==='off'?createApp(config,store,await entraProvider(config)):demoApp(config,store);
 const server=app.listen(config.port,'0.0.0.0',()=>console.log(`Mill Bearing listening on port ${config.port}; mode=${config.demoMode==='off'?'entra':config.demoMode}`));
 for(const signal of ['SIGTERM','SIGINT'] as const) process.on(signal,()=>{

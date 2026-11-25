@@ -2,7 +2,7 @@ import DateInput from "../../components/DateInput";
 import * as React from "react";
 import { PageProps, Badge, Empty } from "../../components/Common";
 import { Item, typeLabels } from "../../models/schema";
-import { delayDays, status, thaiDate, forecast } from "../../domain/rules";
+import { delayDays, status, thaiDate, forecast, updateDeliveryPlan, confirmed } from "../../domain/rules";
 import ImportPanel from "../../components/ImportPanel";
 export default function SupplierTracking(p: PageProps): React.ReactElement {
   const [sort, setSort] = React.useState("date");
@@ -77,6 +77,7 @@ export default function SupplierTracking(p: PageProps): React.ReactElement {
                 "Finishing Plan / Actual",
                 "QC Plan / Actual",
                 "Delivery Plan",
+                "Update Delivery Plan",
                 "Delivery Actual",
                 "สถานะ",
                 "Delay Days",
@@ -116,8 +117,9 @@ export default function SupplierTracking(p: PageProps): React.ReactElement {
                     </td>
                   ),
                 )}
-                <td>{thaiDate(forecast(i))}</td>
-                <td>{thaiDate(i.actual.deliveryDate)}</td>
+                <td>{thaiDate(i.baseline.deliveryDate)}</td>
+                <td>{thaiDate(updateDeliveryPlan(i,p.asOf))}</td>
+                <td>{thaiDate(confirmed(i,p.data,p.asOf) ? i.actual.deliveryDate : null)}</td>
                 <td>
                   <Badge value={status(i, p.data, p.asOf)} />
                 </td>

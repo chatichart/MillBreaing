@@ -6,6 +6,7 @@ import {
   confirmed,
   delayDays,
   forecast,
+  updateDeliveryPlan,
   metrics,
   status,
   thaiDate,
@@ -30,7 +31,7 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
   // Delivered items belong to their actual delivery month/week, even when
   // their plan is in another month (or has no delivery date).
   const boardDate = (i: Item): string | null =>
-    i.actual.deliveryDate || forecast(i);
+    confirmed(i,p.data,p.asOf) ? i.actual.deliveryDate : forecast(i,p.asOf);
   const boardStatus = (i: Item): string => {
     const s = status(i, p.data, p.asOf);
     if (s !== "Delivered" && !/Waiting|Rework/.test(s) && delayDays(i, p.asOf) > 0)
@@ -54,7 +55,7 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
   }
   const inRange = (date: string | null): boolean =>
     !!date && months.includes(date.slice(0, 7));
-  const plannedScope = p.items.filter((i) => inRange(forecast(i)) && matchesStatus(i));
+  const plannedScope = p.items.filter((i) => inRange(forecast(i,p.asOf)) && matchesStatus(i));
   const actualScope = p.items.filter((i) => inRange(i.actual.deliveryDate) &&
     i.actual.deliveryDate! <= p.asOf && matchesStatus(i));
   const plannedThisMonth = plannedScope.length;
@@ -154,6 +155,7 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
               "Item",
               "Supplier",
               "Delivery Plan",
+              "Update Delivery Plan",
               "Delivery Actual",
               "Status",
               "Delay Reason",
@@ -173,8 +175,9 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
               <td>
                 {p.data.suppliers.find((s) => s.id === i.supplierId)?.name}
               </td>
-              <td>{thaiDate(forecast(i))}</td>
-              <td>{thaiDate(i.actual.deliveryDate)}</td>
+              <td>{thaiDate(i.baseline.deliveryDate)}</td>
+              <td>{thaiDate(updateDeliveryPlan(i,p.asOf))}</td>
+              <td>{thaiDate(confirmed(i,p.data,p.asOf) ? i.actual.deliveryDate : null)}</td>
               <td>
                 <Badge value={status(i, p.data, p.asOf)} />
               </td>
@@ -254,7 +257,7 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
         <div className="mb-legend">
           สีรายรายการ:
           <button className="mb-status-filter" aria-pressed={!selectedStatus} onClick={() => setSelectedStatus("")}>ทุกสถานะ</button>
-          {["Ready for Delivery", "Planned / Expected", "Waiting for Truck", "Delayed", "Delivered"].map(s => (
+          {["Ready for Delivery", "Planned / Expected", "Updated Plan", "Waiting for Truck", "Delayed", "Delivered"].map(s => (
             <button key={s} className="mb-status-filter" aria-label={`กรองสถานะ ${s}`}
               aria-pressed={selectedStatus === s}
               onClick={() => setSelectedStatus(selectedStatus === s ? "" : s)}>
@@ -307,7 +310,7 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
                   .filter((i) => weekOf(boardDate(i)!) === w)
                   .map((i) => {
                     const s = boardStatus(i);
-                    const deliveryDelta = i.actual.deliveryDate && i.baseline.deliveryDate
+                    const deliveryDelta = confirmed(i,p.data,p.asOf) && i.baseline.deliveryDate && i.actual.deliveryDate
                       ? Math.round((Date.parse(i.actual.deliveryDate) - Date.parse(i.baseline.deliveryDate)) / 86400000)
                       : null;
                     return (
@@ -318,9 +321,9 @@ export default function PlanningCoordination(p: PageProps): React.ReactElement {
                       >
                         <strong className={`mb-item-type-${i.itemType.toLowerCase()}`}>{i.id}</strong>
                         <span>{s === "Delivered" ? "✓ Delivered" : s}</span>
-                        <small>{i.actual.deliveryDate
-                          ? `Plan ${i.baseline.deliveryDate ? actualLabel(i.baseline.deliveryDate) : "—"} (Actual ${actualLabel(i.actual.deliveryDate)})`
-                          : thaiDate(boardDate(i))}</small>
+                        <small>{confirmed(i,p.data,p.asOf)
+                          ? `Plan ${i.baseline.deliveryDate ? actualLabel(i.baseline.deliveryDate) : "—"} (Actual ${actualLabel(i.actual.deliveryDate!)})`
+                          : updateDeliveryPlan(i,p.asOf) ? `Update Delivery Plan ${thaiDate(updateDeliveryPlan(i,p.asOf))}` : thaiDate(boardDate(i))}</small>
                         {deliveryDelta !== null && (
                           <small className={`mb-delivery-timing ${deliveryDelta > 0 ? "mb-delivery-late" : "mb-delivery-on-time"}`}>
                             {deliveryDelta < 0 ? `ส่งก่อนแผน ${Math.abs(deliveryDelta)} วัน`

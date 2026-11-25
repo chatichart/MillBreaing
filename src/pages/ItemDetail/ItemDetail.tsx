@@ -113,6 +113,8 @@ export default function ItemDetail(
   const save = async (): Promise<void> => {
     try {
       setError("");
+      if(i.actual.deliveryDate && i.actual.deliveryDate>p.asOf)
+        throw new Error("วันที่รับสินค้าจริงต้องไม่เกินวันนี้ กรุณากรอก Update Delivery Plan แทน");
       if (changed)
         throw new Error(
           "รายการนี้ถูกเปลี่ยนในข้อมูลล่าสุด: ดาวน์โหลด Draft แล้วกด Cancel เพื่อโหลดค่าปัจจุบัน จากนั้นนำเฉพาะการแก้ไขกลับมาใช้",
@@ -371,9 +373,14 @@ export default function ItemDetail(
               }
             />
           </label>
+          <label>
+            Update Delivery Plan
+            <DateInput key={`${p.itemId}:${dateReset}`} disabled={disabled} value={i.revisedDeliveryDate || ""}
+              onChange={(value) => set("revisedDeliveryDate", value)} />
+          </label>
           {dateField("Delivery Actual", "actual", "deliveryDate")}
         </div>
-        <p>บันทึก Actual เมื่อรับสินค้าจริงแล้วเท่านั้น • เก็บแผนเดิมสำหรับรายงานในประวัติ</p>
+        <p>Update Delivery Plan คือวันส่งมอบล่าสุดที่แจ้ง • บันทึก Actual เมื่อรับสินค้าจริงแล้วเท่านั้น และต้องไม่เกินวันนี้ • เมื่อมี Actual ระบบจะซ่อน Update Delivery Plan บน Dashboard</p>
         <h3>Readiness</h3>
         <div className="mb-form">
           {dateField("Ready for Delivery", "actual", "readyDate")}

@@ -12,6 +12,8 @@ import {Config} from '../server/config';
 import {createApp} from '../server/app';
 import {demoApp,initializeDemo} from '../server/demo';
 import {IdentityProvider} from '../server/oidc';
+import {runDeliveryMigration,DELIVERY_MIGRATION} from '../server/deliveryMigration';
+import {initialData} from '../src/domain/initialItems';
 
 describe('PostgreSQL + HTTP authorization and concurrency',()=>{
   let pg:EmbeddedPostgres,pool:Pool,store:Store,admin:User,editor:User,viewer:User,pending:User;
@@ -149,6 +151,17 @@ describe('PostgreSQL + HTTP authorization and concurrency',()=>{
     const saved=(await e.agent.put('/api/data').set('Origin',config.origin).set('X-CSRF-Token',e.csrf).send({token:base.token,data:next}).expect(200)).body;
     expect(saved.data.items.find((i:any)=>i.id===item.id).actual.deliveryDate).toBe('2026-11-17');
     expect((await store.snapshot()).data.items.find(i=>i.id===item.id)!.actual.qcDate).toBeNull();
+  });
+  it('backs up the locked SQL snapshot before moving future Actual and is idempotent',async()=>{
+    const before=initialData();before.items[0].actual.deliveryDate='2099-11-27';
+    await pool.query('INSERT INTO mb_projects(id,data) VALUES($1,$2)',['MIGRATION-TEST',before]);
+    await runDeliveryMigration(store,'mb_projects');
+    const row=(await pool.query('SELECT data,revision FROM mb_projects WHERE id=$1',['MIGRATION-TEST'])).rows[0];
+    expect(row.data.items[0].actual.deliveryDate).toBeNull();expect(row.data.items[0].revisedDeliveryDate).toBe('2099-11-27');
+    const backups=await pool.query('SELECT data FROM mb_delivery_migration_backups WHERE project_id=$1 AND migration=$2',['MIGRATION-TEST',DELIVERY_MIGRATION]);
+    expect(backups.rows[0].data).toEqual(before);
+    await runDeliveryMigration(store,'mb_projects');
+    expect((await pool.query('SELECT revision FROM mb_projects WHERE id=$1',['MIGRATION-TEST'])).rows[0].revision).toBe(row.revision);
   });
   it('isolates public trial edits, blocks cross-origin writes, and has conflict protection',async()=>{
     await initializeDemo(store);const demo=demoApp({...config,demoMode:'editor'},store);

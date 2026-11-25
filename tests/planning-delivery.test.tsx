@@ -8,6 +8,19 @@ import { curve } from "../src/domain/rules";
 
 afterEach(cleanup);
 
+it('shows future delivery as Update Delivery Plan, hides it after Actual and never labels it Delivered early',()=>{
+  const data=emptyData(),pending=makeItem('L-002','LOAD'),done=makeItem('L-001','LOAD');
+  pending.baseline.deliveryDate='2026-12-22';pending.revisedDeliveryDate='2026-11-27';
+  done.baseline.deliveryDate='2026-12-17';done.revisedDeliveryDate='2026-11-27';done.actual.deliveryDate='2026-11-17';
+  data.items=[pending,done];
+  render(<PlanningCoordination data={data} items={data.items} asOf="2026-11-25" canWrite={true} busy={false} user="test" onDirty={vi.fn()} openItem={vi.fn()} save={vi.fn()}/>);
+  const card=screen.getByRole('button',{name:/L-002 Updated Plan/});
+  expect(within(card).getByText('Update Delivery Plan 27/11/2026')).toBeTruthy();
+  expect(within(card).queryByText(/Delivered|ส่งก่อนแผน/)).toBeNull();
+  const delivered=screen.getByRole('button',{name:/L-001 ✓ Delivered/});
+  expect(within(delivered).queryByText(/Update Delivery Plan/)).toBeNull();
+});
+
 it("counts monthly plans independently of actual deliveries, including when the delivered card moved months", () => {
   const data = emptyData();
   const early = makeItem("early", "LOAD");
@@ -108,7 +121,8 @@ it("places a November 17 actual in W3 despite a later plan and counts the same d
   const row = screen.getAllByRole("button", { name: "L1" })
     .map(button => button.closest("tr")).find(Boolean)!;
   expect(within(row).getByText("17/11/2026")).toBeTruthy();
-  expect(within(row).getByText("10/01/2027")).toBeTruthy();
+  expect(within(row).queryByText("10/01/2027")).toBeNull();
+  expect(within(row).getByText("20/12/2026")).toBeTruthy();
   // The delivered item must not reappear in its forecast month.
   fireEvent.change(screen.getByLabelText("เดือน"), { target: { value: "2027-01" } });
   expect(screen.queryByRole("button", { name: /L1 ✓ Delivered/ })).toBeNull();
